@@ -10,7 +10,8 @@ import {
   COLLISION_CATEGORY_PLAYER,
   COLLISION_CATEGORY_OBSTACLE,
   COLLISION_CATEGORY_ENEMY,
-  COLLISION_CATEGORY_ATTACK
+  COLLISION_CATEGORY_ATTACK,
+  COLLISION_CATEGORY_COLLECTIBLE
 } from '../../shared/config/constants';
 import { PlayerState, PlayerStateEnum, UpgradeType, PlayerUpgrades } from '../../shared/types';
 
@@ -67,8 +68,9 @@ export class Player extends Phaser.Physics.Matter.Sprite {
 
     // Set up physics body as circle
     this.setCircle(16);
+    this.setFixedRotation(); // Prevent rotation on collision
     this.setCollisionCategory(COLLISION_CATEGORY_PLAYER);
-    this.setCollidesWith([COLLISION_CATEGORY_OBSTACLE, COLLISION_CATEGORY_ENEMY]);
+    this.setCollidesWith([COLLISION_CATEGORY_OBSTACLE, COLLISION_CATEGORY_ENEMY, COLLISION_CATEGORY_COLLECTIBLE]);
 
     // Add to scene
     scene.add.existing(this);

@@ -22,40 +22,27 @@ export class Collectible extends Phaser.Physics.Matter.Sprite {
     // Add to scene
     scene.add.existing(this);
 
-    // Set up animation if needed
-    this.setupAnimation(texture);
-
     // Set visual feedback based on type
     this.setVisualFeedback();
   }
 
-  private setupAnimation(texture: string): void {
-    // Simple idle animation
-    this.scene.anims.create({
-      key: `${texture}-idle`,
-      frames: this.scene.anims.generateFrameNumbers(texture, { start: 0, end: 3 }),
-      frameRate: 10,
-      repeat: -1
-    });
-    this.anims.play(`${texture}-idle`);
-  }
 
   private setVisualFeedback(): void {
     switch (this.type) {
       case CollectibleEnum.HEALTH:
-        this.setTint(0x00ff00); // Green
+        this.setScale(0.5);
         break;
       case CollectibleEnum.COIN:
-        this.setTint(0xffd700); // Gold
+        this.setScale(0.1);
         break;
       case CollectibleEnum.SHIELD:
-        this.setTint(0x0000ff); // Blue
+        this.setScale(0.1);
         break;
       case CollectibleEnum.DAMAGE_BOOST:
-        this.setTint(0xff0000); // Red
+        this.setScale(0.1);
         break;
       case CollectibleEnum.SPEED_BOOST:
-        this.setTint(0xffff00); // Yellow
+        this.setScale(0.1);
         break;
     }
   }
@@ -96,8 +83,9 @@ export class Collectible extends Phaser.Physics.Matter.Sprite {
     // Visual feedback on collection
     this.scene.cameras.main.flash(200, 255, 255, 255); // White flash
 
-    // Remove from scene
-    this.destroy();
+    // Deactivate instead of destroy for pooling
+    this.setActive(false);
+    this.setVisible(false);
   }
 
   getState(): CollectibleType {

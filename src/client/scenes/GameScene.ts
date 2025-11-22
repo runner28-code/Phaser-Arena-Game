@@ -315,9 +315,11 @@ export class GameScene extends Phaser.Scene {
         if ((bodyA.gameObject === this.player && bodyB.collisionFilter.category === COLLISION_CATEGORY_COLLECTIBLE) ||
             (bodyB.gameObject === this.player && bodyA.collisionFilter.category === COLLISION_CATEGORY_COLLECTIBLE)) {
           const collectibleBody = bodyA.gameObject === this.player ? bodyB : bodyA;
-          const collectible = collectibleBody.gameObject as any;
+          const collectible = collectibleBody.gameObject as Collectible;
           if (collectible && typeof collectible.collect === 'function') {
             collectible.collect(this.player);
+            // Release back to pool
+            this.collectiblePool.release(collectible);
           }
         }
       });

@@ -22,6 +22,7 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
   protected attackRange: number = 50;
   protected isAlive: boolean = true;
   protected dropCollectibleCallback?: (type: CollectibleType, texture: string, value: number, x: number, y: number) => void;
+  protected facingDirection: { x: number; y: number } = { x: 1, y: 0 };
 
   constructor(scene: Phaser.Scene, x: number, y: number, config: EnemyConfig) {
     super(scene.matter.world, x, y, config.id); // Assume texture is config.id
@@ -46,31 +47,97 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
   }
 
   protected setupAnimations(): void {
-    // Assume frames are sequential
+    // Idle animations
     this.scene.anims.create({
-      key: this.config.animations.idle,
-      frames: this.scene.anims.generateFrameNumbers('enemy_idle', { start: 0, end: 3 }),
+      key: 'enemy_idle_down',
+      frames: this.scene.anims.generateFrameNumbers('enemy_idle', { frames: [0, 1, 2, 3] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: this.config.animations.walk,
-      frames: this.scene.anims.generateFrameNumbers('enemy_walk', { start: 0, end: 7 }),
+      key: 'enemy_idle_up',
+      frames: this.scene.anims.generateFrameNumbers('enemy_idle', { frames: [36, 37, 38, 39] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: this.config.animations.attack,
-      frames: this.scene.anims.generateFrameNumbers('enemy_attack', { start: 0, end: 11 }),
+      key: 'enemy_idle_left',
+      frames: this.scene.anims.generateFrameNumbers('enemy_idle', { frames: [12, 13, 14, 15] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    this.scene.anims.create({
+      key: 'enemy_idle_right',
+      frames: this.scene.anims.generateFrameNumbers('enemy_idle', { frames: [24, 25, 26, 27] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    // Walk animations
+    this.scene.anims.create({
+      key: 'enemy_walk_down',
+      frames: this.scene.anims.generateFrameNumbers('enemy_walk', { frames: [0, 1, 2, 3, 4, 5, 6, 7] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    this.scene.anims.create({
+      key: 'enemy_walk_up',
+      frames: this.scene.anims.generateFrameNumbers('enemy_walk', { frames: [24, 25, 26, 27, 28, 29, 30, 31] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    this.scene.anims.create({
+      key: 'enemy_walk_left',
+      frames: this.scene.anims.generateFrameNumbers('enemy_walk', { frames: [8, 9, 10, 11, 12, 13, 14, 15] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    this.scene.anims.create({
+      key: 'enemy_walk_right',
+      frames: this.scene.anims.generateFrameNumbers('enemy_walk', { frames: [16, 17, 18, 19, 20, 21, 22, 23] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    // Attack animations
+    this.scene.anims.create({
+      key: 'enemy_attack_down',
+      frames: this.scene.anims.generateFrameNumbers('enemy_attack', { frames: [0, 1, 2, 3, 4, 5] }),
       frameRate: 15,
       repeat: 0
     });
 
     this.scene.anims.create({
-      key: this.config.animations.death,
-      frames: this.scene.anims.generateFrameNumbers(this.config.id, { start: 12, end: 15 }),
+      key: 'enemy_attack_up',
+      frames: this.scene.anims.generateFrameNumbers('enemy_attack', { frames: [18, 19, 20, 21, 22, 23] }),
+      frameRate: 15,
+      repeat: 0
+    });
+
+    this.scene.anims.create({
+      key: 'enemy_attack_left',
+      frames: this.scene.anims.generateFrameNumbers('enemy_attack', { frames: [6, 7, 8, 9, 10, 11] }),
+      frameRate: 15,
+      repeat: 0
+    });
+
+    this.scene.anims.create({
+      key: 'enemy_attack_right',
+      frames: this.scene.anims.generateFrameNumbers('enemy_attack', { frames: [12, 13, 14, 15, 16, 17] }),
+      frameRate: 15,
+      repeat: 0
+    });
+
+    // Death animation
+    this.scene.anims.create({
+      key: 'enemy_death',
+      frames: this.scene.anims.generateFrameNumbers('enemy_death', { start: 0, end: 3 }),
       frameRate: 10,
       repeat: 0
     });
@@ -86,6 +153,11 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
 
   update(delta: number): void {
     if (!this.isAlive || !this.player) return;
+
+    // Update facing direction
+    const angle = Phaser.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
+    this.facingDirection.x = Math.cos(angle);
+    this.facingDirection.y = Math.sin(angle);
 
     const distance = Phaser.Math.Distance.Between(this.x, this.y, this.player.x, this.player.y);
 
@@ -114,6 +186,10 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
     this.setActive(false);
     this.setVisible(false);
     this.playDeathSound();
+    // Add score to player
+    if (this.player && typeof this.player.addScore === 'function') {
+      this.player.addScore(10); // Base score for killing enemy
+    }
     // Drop collectible
     this.dropCollectible();
   }
@@ -177,6 +253,14 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
     }
   }
 
+  protected getDirectionString(): string {
+    if (Math.abs(this.facingDirection.x) > Math.abs(this.facingDirection.y)) {
+      return this.facingDirection.x > 0 ? 'right' : 'left';
+    } else {
+      return this.facingDirection.y > 0 ? 'down' : 'up';
+    }
+  }
+
   public reset(): void {
     this.x = 0;
     this.y = 0;
@@ -207,7 +291,7 @@ export class Slime extends Enemy {
     if (this.scene.time.now - this.lastAttackTime < this.attackCooldown) return;
 
     this.lastAttackTime = this.scene.time.now;
-    this.anims.play("enemy_attack", true);
+    this.anims.play(`enemy_attack_${this.getDirectionString()}`, true);
 
     // Melee attack: create hitbox
     const angle = Phaser.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
@@ -250,7 +334,7 @@ export class Slime extends Enemy {
     // For simplicity, assume no obstacles or just move
 
     this.setVelocity(velocityX, velocityY);
-    this.anims.play("enemy_walk", true);
+    this.anims.play(`enemy_walk_${this.getDirectionString()}`, true);
   }
 }
 
@@ -259,7 +343,7 @@ export class Goblin extends Enemy {
     if (this.scene.time.now - this.lastAttackTime < this.attackCooldown) return;
 
     this.lastAttackTime = this.scene.time.now;
-    this.anims.play(this.config.animations.attack);
+    this.anims.play(`enemy_attack_${this.getDirectionString()}`, true);
 
     // Ranged attack: shoot projectile
     const angle = Phaser.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
@@ -305,6 +389,6 @@ export class Goblin extends Enemy {
     // For simplicity, assume no obstacles or just move
 
     this.setVelocity(velocityX, velocityY);
-    this.anims.play(this.config.animations.walk, true);
+    this.anims.play(`enemy_walk_${this.getDirectionString()}`, true);
   }
 }
