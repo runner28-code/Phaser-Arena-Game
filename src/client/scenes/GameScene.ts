@@ -72,6 +72,10 @@ export class GameScene extends Phaser.Scene {
       }).catch((error) => {
         console.error('Failed to connect to server:', error);
       });
+
+      // Create spawn manager for local enemies (for testing)
+      this.spawnManager = new SpawnManager(this, this.player, this.enemyPool, () => this.showUpgradeSelection());
+      this.spawnManager.startWave();
     } else {
       // Single player mode
       // Create spawn manager with level up callback
@@ -384,6 +388,15 @@ export class GameScene extends Phaser.Scene {
         this.player.y = localPlayerState.y;
         this.player.health = localPlayerState.health;
         this.player.maxHealth = localPlayerState.maxHealth;
+        this.player.facingDirection = localPlayerState.direction;
+
+        // Play animation based on direction
+        const dir = localPlayerState.direction.x === 0 ? (localPlayerState.direction.y === 1 ? 'down' : 'up') : (localPlayerState.direction.x === 1 ? 'right' : 'left');
+        if (localPlayerState.direction.x !== 0 || localPlayerState.direction.y !== 0) {
+          this.player.anims.play(`player-walk_${dir}`, true);
+        } else {
+          this.player.anims.play(`player-idle_${dir}`, true);
+        }
 
         if (!localPlayerState.isAlive && this.player.state !== PlayerStateEnum.DEAD) {
           // Handle game over
@@ -408,6 +421,13 @@ export class GameScene extends Phaser.Scene {
 
       // Update UI from server state
       this.updateUIFromServer(interpolatedState);
+    } else {
+      // No server state, handle locally for testing
+      this.player.update(delta);
+    }
+
+    if (this.spawnManager) {
+      this.spawnManager.update(delta);
     }
 
     // Update game timer

@@ -33,7 +33,7 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     right: Phaser.Input.Keyboard.Key;
   };
   private attackKey: Phaser.Input.Keyboard.Key;
-  private facingDirection: { x: number; y: number } = { x: 1, y: 0 };
+  public facingDirection: { x: number; y: number } = { x: 1, y: 0 };
 
   // Buff properties
   private invulnerable: boolean = false;
@@ -434,7 +434,8 @@ export class Player extends Phaser.Physics.Matter.Sprite {
       speed: this.speed,
       damage: this.damage,
       isAlive: this.state !== PlayerStateEnum.DEAD,
-      lastAttackTime: this.lastAttackTime
+      lastAttackTime: this.lastAttackTime,
+      direction: this.facingDirection
     };
   }
 

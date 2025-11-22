@@ -66,6 +66,7 @@ export interface PlayerState {
   damage: number;
   isAlive: boolean;
   lastAttackTime: number;
+  direction: { x: number; y: number };
 }
 
 export interface EnemyState {
