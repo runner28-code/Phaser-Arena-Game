@@ -39,7 +39,15 @@ export class NetworkManager {
 
       this.ws.onmessage = (event) => {
         console.log(`[Network] Received message from server (${event.data.byteLength || event.data.length} bytes)`);
-        this.handleMessage(event.data);
+        if (event.data instanceof Blob) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            this.handleMessage(reader.result as ArrayBuffer);
+          };
+          reader.readAsArrayBuffer(event.data);
+        } else {
+          this.handleMessage(event.data);
+        }
       };
 
       this.ws.onerror = (error) => {
