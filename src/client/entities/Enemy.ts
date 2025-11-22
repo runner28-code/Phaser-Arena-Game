@@ -36,6 +36,7 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
 
     // Set up physics body as circle
     this.setCircle(16);
+    this.setFixedRotation(); // Prevent rotation on collision
     this.setCollisionCategory(COLLISION_CATEGORY_ENEMY);
     this.setCollidesWith([COLLISION_CATEGORY_OBSTACLE, COLLISION_CATEGORY_PLAYER, COLLISION_CATEGORY_ATTACK]);
 
@@ -47,97 +48,134 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
   }
 
   protected setupAnimations(): void {
+    const idleKey = this.config.animations.idle;
+    const walkKey = this.config.animations.walk;
+    const attackKey = this.config.animations.attack;
+    const deathKey = this.config.animations.death;
+
     // Idle animations
     this.scene.anims.create({
-      key: 'enemy_idle_down',
-      frames: this.scene.anims.generateFrameNumbers('enemy_idle', { frames: [0, 1, 2, 3] }),
+      key: `${idleKey}_down`,
+      frames: this.scene.anims.generateFrameNumbers(idleKey, { frames: [0, 1, 2, 3] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: 'enemy_idle_up',
-      frames: this.scene.anims.generateFrameNumbers('enemy_idle', { frames: [36, 37, 38, 39] }),
+      key: `${idleKey}_up`,
+      frames: this.scene.anims.generateFrameNumbers(idleKey, { frames: [4, 5, 6, 7] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: 'enemy_idle_left',
-      frames: this.scene.anims.generateFrameNumbers('enemy_idle', { frames: [12, 13, 14, 15] }),
+      key: `${idleKey}_left`,
+      frames: this.scene.anims.generateFrameNumbers(idleKey, { frames: [8, 9, 10, 11] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: 'enemy_idle_right',
-      frames: this.scene.anims.generateFrameNumbers('enemy_idle', { frames: [24, 25, 26, 27] }),
+      key: `${idleKey}_right`,
+      frames: this.scene.anims.generateFrameNumbers(idleKey, { frames: [12, 13, 14, 15] }),
       frameRate: 10,
       repeat: -1
     });
 
     // Walk animations
     this.scene.anims.create({
-      key: 'enemy_walk_down',
-      frames: this.scene.anims.generateFrameNumbers('enemy_walk', { frames: [0, 1, 2, 3, 4, 5, 6, 7] }),
+      key: `${walkKey}_down`,
+      frames: this.scene.anims.generateFrameNumbers(walkKey, { frames: [0, 1, 2, 3, 4, 5, 6, 7] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: 'enemy_walk_up',
-      frames: this.scene.anims.generateFrameNumbers('enemy_walk', { frames: [24, 25, 26, 27, 28, 29, 30, 31] }),
+      key: `${walkKey}_up`,
+      frames: this.scene.anims.generateFrameNumbers(walkKey, { frames: [8, 9, 10, 11, 12, 13, 14, 15] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: 'enemy_walk_left',
-      frames: this.scene.anims.generateFrameNumbers('enemy_walk', { frames: [8, 9, 10, 11, 12, 13, 14, 15] }),
+      key: `${walkKey}_left`,
+      frames: this.scene.anims.generateFrameNumbers(walkKey, { frames: [16, 17, 18, 19, 20, 21, 22, 23] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: 'enemy_walk_right',
-      frames: this.scene.anims.generateFrameNumbers('enemy_walk', { frames: [16, 17, 18, 19, 20, 21, 22, 23] }),
+      key: `${walkKey}_right`,
+      frames: this.scene.anims.generateFrameNumbers(walkKey, { frames: [24, 25, 26, 27, 28, 29, 30, 31] }),
       frameRate: 10,
       repeat: -1
     });
 
     // Attack animations
-    this.scene.anims.create({
-      key: 'enemy_attack_down',
-      frames: this.scene.anims.generateFrameNumbers('enemy_attack', { frames: [0, 1, 2, 3, 4, 5] }),
-      frameRate: 15,
-      repeat: 0
-    });
+    if (this.id === 'slime') {
+      // Slime has frames 0-35
+      this.scene.anims.create({
+        key: `${attackKey}_down`,
+        frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [0, 1, 2, 3, 4, 5, 6, 7, 8] }),
+        frameRate: 15,
+        repeat: 0
+      });
 
-    this.scene.anims.create({
-      key: 'enemy_attack_up',
-      frames: this.scene.anims.generateFrameNumbers('enemy_attack', { frames: [18, 19, 20, 21, 22, 23] }),
-      frameRate: 15,
-      repeat: 0
-    });
+      this.scene.anims.create({
+        key: `${attackKey}_up`,
+        frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [9, 10, 11, 12, 13, 14, 15, 16, 17] }),
+        frameRate: 15,
+        repeat: 0
+      });
 
-    this.scene.anims.create({
-      key: 'enemy_attack_left',
-      frames: this.scene.anims.generateFrameNumbers('enemy_attack', { frames: [6, 7, 8, 9, 10, 11] }),
-      frameRate: 15,
-      repeat: 0
-    });
+      this.scene.anims.create({
+        key: `${attackKey}_left`,
+        frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [18, 19, 20, 21, 22, 23, 24, 25, 26] }),
+        frameRate: 15,
+        repeat: 0
+      });
 
-    this.scene.anims.create({
-      key: 'enemy_attack_right',
-      frames: this.scene.anims.generateFrameNumbers('enemy_attack', { frames: [12, 13, 14, 15, 16, 17] }),
-      frameRate: 15,
-      repeat: 0
-    });
+      this.scene.anims.create({
+        key: `${attackKey}_right`,
+        frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [27, 28, 29, 30, 31, 32, 33, 34, 35] }),
+        frameRate: 15,
+        repeat: 0
+      });
+    } else {
+      // Goblin
+      this.scene.anims.create({
+        key: `${attackKey}_down`,
+        frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }),
+        frameRate: 15,
+        repeat: 0
+      });
+
+      this.scene.anims.create({
+        key: `${attackKey}_up`,
+        frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] }),
+        frameRate: 15,
+        repeat: 0
+      });
+
+      this.scene.anims.create({
+        key: `${attackKey}_left`,
+        frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] }),
+        frameRate: 15,
+        repeat: 0
+      });
+
+      this.scene.anims.create({
+        key: `${attackKey}_right`,
+        frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47] }),
+        frameRate: 15,
+        repeat: 0
+      });
+    }
 
     // Death animation
     this.scene.anims.create({
-      key: 'enemy_death',
-      frames: this.scene.anims.generateFrameNumbers('enemy_death', { start: 0, end: 3 }),
+      key: deathKey,
+      frames: this.scene.anims.generateFrameNumbers(deathKey, { start: 0, end: 3 }),
       frameRate: 10,
       repeat: 0
     });
@@ -182,7 +220,7 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
 
   protected die(): void {
     this.isAlive = false;
-    this.anims.play("enemy_death", true);
+    this.anims.play(this.config.animations.death, true);
     this.setActive(false);
     this.setVisible(false);
     this.playDeathSound();
@@ -291,7 +329,7 @@ export class Slime extends Enemy {
     if (this.scene.time.now - this.lastAttackTime < this.attackCooldown) return;
 
     this.lastAttackTime = this.scene.time.now;
-    this.anims.play(`enemy_attack_${this.getDirectionString()}`, true);
+    this.anims.play(`${this.config.animations.attack}_${this.getDirectionString()}`, true);
 
     // Melee attack: create hitbox
     const angle = Phaser.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
@@ -334,7 +372,7 @@ export class Slime extends Enemy {
     // For simplicity, assume no obstacles or just move
 
     this.setVelocity(velocityX, velocityY);
-    this.anims.play(`enemy_walk_${this.getDirectionString()}`, true);
+    this.anims.play(`${this.config.animations.walk}_${this.getDirectionString()}`, true);
   }
 }
 
@@ -343,7 +381,7 @@ export class Goblin extends Enemy {
     if (this.scene.time.now - this.lastAttackTime < this.attackCooldown) return;
 
     this.lastAttackTime = this.scene.time.now;
-    this.anims.play(`enemy_attack_${this.getDirectionString()}`, true);
+    this.anims.play(`${this.config.animations.attack}_${this.getDirectionString()}`, true);
 
     // Ranged attack: shoot projectile
     const angle = Phaser.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
@@ -389,6 +427,6 @@ export class Goblin extends Enemy {
     // For simplicity, assume no obstacles or just move
 
     this.setVelocity(velocityX, velocityY);
-    this.anims.play(`enemy_walk_${this.getDirectionString()}`, true);
+    this.anims.play(`${this.config.animations.walk}_${this.getDirectionString()}`, true);
   }
 }

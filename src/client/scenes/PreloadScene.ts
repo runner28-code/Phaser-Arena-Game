@@ -32,10 +32,16 @@ export class PreloadScene extends Phaser.Scene {
     this.load.spritesheet('player_attack', 'src/client/scenes/assets/player/player_attack.png',{ frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('player_run_attack', 'src/client/scenes/assets/player/player_run_attack.png',{ frameWidth: 64, frameHeight: 64 });
 
-    this.load.spritesheet('enemy_idle', 'src/client/scenes/assets/enemy/enemy_idle.png',{ frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('enemy_walk', 'src/client/scenes/assets/enemy/enemy_walk.png',{ frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('enemy_attack', 'src/client/scenes/assets/enemy/enemy_attack.png',{ frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('enemy_death', 'src/client/scenes/assets/enemy/enemy_death.png',{ frameWidth: 64, frameHeight: 64 });
+    // Enemy spritesheets
+    this.load.spritesheet('slime_idle', 'src/client/scenes/assets/enemy/slime_idle.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('slime_walk', 'src/client/scenes/assets/enemy/slime_walk.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('slime_attack', 'src/client/scenes/assets/enemy/slime_attack.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('slime_death', 'src/client/scenes/assets/enemy/slime_death.png',{ frameWidth: 64, frameHeight: 64 });
+
+    this.load.spritesheet('goblin_idle', 'src/client/scenes/assets/enemy/goblin_idle.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('goblin_walk', 'src/client/scenes/assets/enemy/goblin_walk.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('goblin_attack', 'src/client/scenes/assets/enemy/goblin_attack.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('goblin_death', 'src/client/scenes/assets/enemy/goblin_death.png',{ frameWidth: 64, frameHeight: 64 });
 
     this.load.image('health_potion', 'src/client/scenes/assets/health_potion.png');
     this.load.image('shield', 'src/client/scenes/assets/shield.png');
