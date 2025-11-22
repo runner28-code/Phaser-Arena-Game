@@ -1,0 +1,28 @@
+{
+  "name": "phaser-assessment",
+  "version": "1.0.0",
+  "description": "Phaser game assessment project",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc",
+    "preview": "vite preview",
+    "server": "ts-node src/server/server.ts"
+  },
+  "dependencies": {
+    "@types/ws": "^8.18.1",
+    "msgpack-lite": "^0.1.26",
+    "phaser": "^3.60.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/msgpack-lite": "^0.1.12",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
