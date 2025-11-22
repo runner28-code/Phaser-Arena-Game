@@ -233,18 +233,13 @@ export class Player extends Phaser.Physics.Matter.Sprite {
       velocityY = 1;
       this.facingDirection = { x: 0, y: 1 };
     }
-    if(this.attackKey.isDown && (velocityX !== 0 || velocityY !== 0)) {
-      console.log('Player is moving and attacking');
-      this.state = PlayerStateEnum.ATTACKING;
-      this.anims.play(`player-run-attack_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true);
-    }
-    else if(this.attackKey.isDown) {
-      this.state = PlayerStateEnum.ATTACKING;
-      this.anims.play(`player-attack_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true);
-    }else if (velocityX !== 0 || velocityY !== 0) {
+   if(velocityX !== 0 || velocityY !== 0) {
       console.log('Player is moving');
       this.state = PlayerStateEnum.WALKING;
-      this.anims.play(`player-walk_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true);
+      this.anims.play(`player-walk_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true); 
+   }else if(this.attackKey.isDown) {
+      this.state = PlayerStateEnum.ATTACKING;
+      this.anims.play(`player-attack_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true);
     }else{
       this.state = PlayerStateEnum.IDLE;
       this.anims.play(`player-idle_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true);

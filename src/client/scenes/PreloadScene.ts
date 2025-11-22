@@ -32,6 +32,11 @@ export class PreloadScene extends Phaser.Scene {
     this.load.spritesheet('player_attack', 'src/client/scenes/assets/player/player_attack.png',{ frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('player_run_attack', 'src/client/scenes/assets/player/player_run_attack.png',{ frameWidth: 64, frameHeight: 64 });
 
+    this.load.spritesheet('enemy_idle', 'src/client/scenes/assets/enemy/enemy_idle.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('enemy_walk', 'src/client/scenes/assets/enemy/enemy_walk.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('enemy_attack', 'src/client/scenes/assets/enemy/enemy_attack.png',{ frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('enemy_death', 'src/client/scenes/assets/enemy/enemy_death.png',{ frameWidth: 64, frameHeight: 64 });
+
     this.load.spritesheet('player', 'src/client/scenes/assets/player.png',{ frameWidth: 50, frameHeight: 37 }); // Placeholder
     this.load.spritesheet('enemy', 'src/client/scenes/assets/enemy.png',{ frameWidth: 32, frameHeight: 25 }); // Placeholder
     this.load.spritesheet('collectible', 'src/client/scenes/assets/collectible.png',{ frameWidth: 16, frameHeight: 16 }); // Placeholder

@@ -110,7 +110,7 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
 
   protected die(): void {
     this.isAlive = false;
-    this.anims.play(this.config.animations.death);
+    this.anims.play("enemy_death", true);
     this.setActive(false);
     this.setVisible(false);
     this.playDeathSound();
@@ -207,7 +207,7 @@ export class Slime extends Enemy {
     if (this.scene.time.now - this.lastAttackTime < this.attackCooldown) return;
 
     this.lastAttackTime = this.scene.time.now;
-    this.anims.play(this.config.animations.attack);
+    this.anims.play("enemy_attack", true);
 
     // Melee attack: create hitbox
     const angle = Phaser.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
@@ -250,7 +250,7 @@ export class Slime extends Enemy {
     // For simplicity, assume no obstacles or just move
 
     this.setVelocity(velocityX, velocityY);
-    this.anims.play(this.config.animations.walk, true);
+    this.anims.play("enemy_walk", true);
   }
 }
 
@@ -292,5 +292,19 @@ export class Goblin extends Enemy {
       (this.scene as any).releaseProjectile?.(projectile);
       this.scene.matter.world.off('collisionstart', collisionCallback);
     });
+  }
+
+  protected chasePlayer(): void {
+    const angle = Phaser.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
+    const velocityX = Math.cos(angle) * this.speed;
+    const velocityY = Math.sin(angle) * this.speed;
+
+    // Basic pathfinding: check ahead for collision
+    const checkX = this.x + Math.cos(angle) * 20;
+    const checkY = this.y + Math.sin(angle) * 20;
+    // For simplicity, assume no obstacles or just move
+
+    this.setVelocity(velocityX, velocityY);
+    this.anims.play(this.config.animations.walk, true);
   }
 }
