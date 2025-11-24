@@ -91,28 +91,28 @@ export class RemotePlayer extends Phaser.Physics.Matter.Sprite {
       key: 'remote-attack_down',
       frames: this.anims.generateFrameNumbers('player_attack', { frames: [0, 1, 2, 3, 4, 5] }),
       frameRate: 10,
-      repeat: 0
+      repeat: -1
     });
 
     this.scene.anims.create({
       key: 'remote-attack_left',
       frames: this.anims.generateFrameNumbers('player_attack', { frames: [6, 7, 8, 9, 10, 11] }),
       frameRate: 10,
-      repeat: 0
+      repeat: -1
     });
 
     this.scene.anims.create({
       key: 'remote-attack_right',
       frames: this.anims.generateFrameNumbers('player_attack', { frames: [12, 13, 14, 15, 16, 17] }),
       frameRate: 10,
-      repeat: 0
+      repeat: -1
     });
 
     this.scene.anims.create({
       key: 'remote-attack_up',
       frames: this.anims.generateFrameNumbers('player_attack', { frames: [18, 19, 20, 21, 22, 23] }),
       frameRate: 10,
-      repeat: 0
+      repeat: -1
     });
 
     // Death animation

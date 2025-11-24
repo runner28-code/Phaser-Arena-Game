@@ -497,7 +497,7 @@ export class GameScene extends Phaser.Scene {
 
   private getPlayerAction(): string | undefined {
     const attackKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    if (Phaser.Input.Keyboard.JustDown(attackKey)) {
+    if (attackKey.isDown) {
       return 'attack';
     }
     return undefined;

@@ -423,7 +423,7 @@ class GameScene extends phaser_1.default.Scene {
     }
     getPlayerAction() {
         const attackKey = this.input.keyboard.addKey(phaser_1.default.Input.Keyboard.KeyCodes.SPACE);
-        if (phaser_1.default.Input.Keyboard.JustDown(attackKey)) {
+        if (attackKey.isDown) {
             return 'attack';
         }
         return undefined;

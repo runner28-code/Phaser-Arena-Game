@@ -1,5 +1,5 @@
 import { GameMessage, MessageType, PlayerData, GameState, GameStateData, PlayerInputPayload, JoinGamePayload, PlayerState } from '../shared/types/index';
-import { PLAYER_HEALTH, PLAYER_MAX_HEALTH, PLAYER_SPEED, PLAYER_DAMAGE, GAME_WIDTH, GAME_HEIGHT, UPDATE_RATE } from '../shared/config/constants';
+import { PLAYER_HEALTH, PLAYER_MAX_HEALTH, PLAYER_SPEED, PLAYER_DAMAGE, GAME_WIDTH, GAME_HEIGHT, UPDATE_RATE, ATTACK_COOLDOWN } from '../shared/config/constants';
 import { WebSocketServer } from './WebSocketServer';
 
 export class GameRoom {
@@ -114,22 +114,27 @@ export class GameRoom {
     // Determine current state
     if (input.action === 'attack') {
       const now = Date.now();
-      if (now - player.lastAttackTime > 500) { // 500ms cooldown
+      if (now - player.lastAttackTime > ATTACK_COOLDOWN) {
         player.lastAttackTime = now;
         this.handlePlayerAttack(player);
         player.currentState = 'attacking';
       }
-    } else if (input.direction.x !== 0 || input.direction.y !== 0) {
-      player.currentState = 'walking';
-    } else {
-      player.currentState = 'idle';
+    }
+
+    // Only update state if not currently attacking
+    if (!player.isAttacking) {
+      if (input.direction.x !== 0 || input.direction.y !== 0) {
+        player.currentState = 'walking';
+      } else {
+        player.currentState = 'idle';
+      }
     }
   }
 
   private handlePlayerAttack(player: PlayerData) {
     const now = Date.now();
     player.isAttacking = true;
-    player.attackEndTime = now + 300; // 300ms attack duration
+    player.attackEndTime = now + 600; // 600ms attack duration to match animation
 
     // Check for hits on other players
     for (const [otherPlayerId, otherPlayer] of this.players) {

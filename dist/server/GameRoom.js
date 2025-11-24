@@ -98,23 +98,26 @@ class GameRoom {
         // Determine current state
         if (input.action === 'attack') {
             const now = Date.now();
-            if (now - player.lastAttackTime > 500) { // 500ms cooldown
+            if (now - player.lastAttackTime > constants_1.ATTACK_COOLDOWN) {
                 player.lastAttackTime = now;
                 this.handlePlayerAttack(player);
                 player.currentState = 'attacking';
             }
         }
-        else if (input.direction.x !== 0 || input.direction.y !== 0) {
-            player.currentState = 'walking';
-        }
-        else {
-            player.currentState = 'idle';
+        // Only update state if not currently attacking
+        if (!player.isAttacking) {
+            if (input.direction.x !== 0 || input.direction.y !== 0) {
+                player.currentState = 'walking';
+            }
+            else {
+                player.currentState = 'idle';
+            }
         }
     }
     handlePlayerAttack(player) {
         const now = Date.now();
         player.isAttacking = true;
-        player.attackEndTime = now + 300; // 300ms attack duration
+        player.attackEndTime = now + 600; // 600ms attack duration to match animation
         // Check for hits on other players
         for (const [otherPlayerId, otherPlayer] of this.players) {
             if (otherPlayerId === player.id || otherPlayer.state === index_1.PlayerState.DEAD)
