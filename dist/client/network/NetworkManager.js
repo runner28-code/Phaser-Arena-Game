@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NetworkManager = void 0;
 const index_1 = require("../../shared/types/index");
+const constants_1 = require("../../shared/config/constants");
 // @ts-ignore
 const msgpack = __importStar(require("msgpack-lite"));
 class NetworkManager {
@@ -177,7 +178,7 @@ class NetworkManager {
         const LERP_FACTOR = 0.3;
         const now = Date.now();
         const timeSinceUpdate = now - this.stateTimestamp;
-        const interpolationFactor = Math.min(timeSinceUpdate / (1000 / 20), 1); // Cap at 20Hz
+        const interpolationFactor = Math.min(timeSinceUpdate / (1000 / constants_1.UPDATE_RATE), 1); // Cap at UPDATE_RATE Hz
         // Interpolate player positions
         const interpolatedPlayers = this.currentState.players.map((currentPlayer) => {
             const previousPlayer = this.previousState.players.find((p) => p.id === currentPlayer.id);

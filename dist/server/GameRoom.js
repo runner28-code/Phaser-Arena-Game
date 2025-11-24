@@ -245,7 +245,7 @@ class GameRoom {
         const waveMultiplier = 1 + (this.currentWave - 1) * 0.05; // 5% increase per wave
         const health = Math.floor(config.health * waveMultiplier);
         const damage = Math.floor(config.damage * waveMultiplier);
-        const speed = config.speed * Math.min(1 + (this.currentWave - 1) * 0.05, 2.0); // Max 2x speed
+        const speed = config.speed * 100 * Math.min(1 + (this.currentWave - 1) * 0.05, 2.0); // Scale to pixels per second, max 2x speed
         const enemy = {
             id: `enemy_${this.nextEnemyId++}`,
             x: Math.random() * constants_1.GAME_WIDTH,

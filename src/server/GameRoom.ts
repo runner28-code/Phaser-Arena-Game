@@ -114,8 +114,8 @@ export class GameRoom {
       }
 
       // Movement is based on input direction
-      player.x += input.direction.x * player.speed * this.deltaTime;
-      player.y += input.direction.y * player.speed * this.deltaTime;
+      player.x += input.direction.x * player.speed;
+      player.y += input.direction.y * player.speed;
 
       // Keep player in bounds
       player.x = Math.max(0, Math.min(GAME_WIDTH, player.x));
@@ -269,7 +269,7 @@ export class GameRoom {
     const waveMultiplier = 1 + (this.currentWave - 1) * 0.05; // 5% increase per wave
     const health = Math.floor(config.health * waveMultiplier);
     const damage = Math.floor(config.damage * waveMultiplier);
-    const speed = config.speed * Math.min(1 + (this.currentWave - 1) * 0.05, 2.0); // Max 2x speed
+    const speed = config.speed * 100 * Math.min(1 + (this.currentWave - 1) * 0.05, 2.0); // Scale to pixels per second, max 2x speed
 
     const enemy: EnemyData = {
       id: `enemy_${this.nextEnemyId++}`,
