@@ -31,6 +31,7 @@ export class GameScene extends Phaser.Scene {
     private playerCountText!: Phaser.GameObjects.Text;
     private waitingText!: Phaser.GameObjects.Text;
     private deathAlertText!: Phaser.GameObjects.Text;
+    private collectibleMessageText!: Phaser.GameObjects.Text;
 
     // Object pools for single-player performance optimization
     private enemyPool!: ObjectPool<Enemy>;
@@ -66,7 +67,7 @@ export class GameScene extends Phaser.Scene {
 
     if (this.mode === 'multi') {
       // Initialize network manager for multiplayer
-      this.networkManager = new NetworkManager('ws://localhost:8080');
+      this.networkManager = new NetworkManager('ws://192.168.110.132:8080');
       this.networkManager.connect().then(() => {
         console.log('Connected to multiplayer server');
         this.setupNetworkHandlers();
@@ -102,6 +103,14 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.deathAlertText.setVisible(false);
     this.uiContainer.add(this.deathAlertText);
+
+    // Create collectible message text (for multiplayer)
+    this.collectibleMessageText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50, '', {
+      fontSize: '24px',
+      color: '#00ff00'
+    }).setOrigin(0.5);
+    this.collectibleMessageText.setVisible(false);
+    this.uiContainer.add(this.collectibleMessageText);
 
     // Create health bar
     this.createHealthBar();
@@ -327,41 +336,80 @@ export class GameScene extends Phaser.Scene {
     this.updateUpgradeUI();
   }
 
-  private updateBuffUI(): void {
+  private updateBuffUI(gameState?: GameStateData): void {
     // Clear existing texts
     this.buffTexts.forEach(text => text.destroy());
     this.buffTexts = [];
 
-    const timers = this.player.getBuffTimers();
     let yOffset = 70;
+    const xPosition = GAME_WIDTH - 250; // Right side of the window
 
-    if (timers.invulnerable > 0) {
-      const text = this.add.text(10, yOffset, `Shield: ${timers.invulnerable.toFixed(1)}s`, {
-        fontSize: '20px',
-        color: '#0000ff'
-      });
-      this.buffTexts.push(text);
-      this.uiContainer.add(text);
-      yOffset += 25;
-    }
+    if (this.mode === 'multi' && gameState) {
+      // Multiplayer: get buff data from server
+      const localPlayerId = this.networkManager!.getPlayerId();
+      const localPlayerData = gameState.players.find(p => p.id === localPlayerId);
+      if (!localPlayerData) return;
 
-    if (timers.damageBoost > 0) {
-      const text = this.add.text(10, yOffset, `Damage Boost: ${timers.damageBoost.toFixed(1)}s`, {
-        fontSize: '20px',
-        color: '#ff0000'
-      });
-      this.buffTexts.push(text);
-      this.uiContainer.add(text);
-      yOffset += 25;
-    }
+      if (localPlayerData.invulnerableTimer > 0) {
+        const text = this.add.text(xPosition, yOffset, `Shield: ${(localPlayerData.invulnerableTimer / 1000).toFixed(1)}s`, {
+          fontSize: '20px',
+          color: '#0000ff'
+        });
+        this.buffTexts.push(text);
+        this.uiContainer.add(text);
+        yOffset += 25;
+      }
 
-    if (timers.speedBoost > 0) {
-      const text = this.add.text(10, yOffset, `Speed Boost: ${timers.speedBoost.toFixed(1)}s`, {
-        fontSize: '20px',
-        color: '#ffff00'
-      });
-      this.buffTexts.push(text);
-      this.uiContainer.add(text);
+      if (localPlayerData.damageBoostTimer > 0) {
+        const text = this.add.text(xPosition, yOffset, `Damage Boost: ${(localPlayerData.damageBoostTimer / 1000).toFixed(1)}s`, {
+          fontSize: '20px',
+          color: '#ff0000'
+        });
+        this.buffTexts.push(text);
+        this.uiContainer.add(text);
+        yOffset += 25;
+      }
+
+      if (localPlayerData.speedBoostTimer > 0) {
+        const text = this.add.text(xPosition, yOffset, `Speed Boost: ${(localPlayerData.speedBoostTimer / 1000).toFixed(1)}s`, {
+          fontSize: '20px',
+          color: '#ffff00'
+        });
+        this.buffTexts.push(text);
+        this.uiContainer.add(text);
+      }
+    } else if (this.mode === 'single') {
+      // Single-player: use player's buff timers
+      const timers = this.player.getBuffTimers();
+
+      if (timers.invulnerable > 0) {
+        const text = this.add.text(xPosition, yOffset, `Shield: ${timers.invulnerable.toFixed(1)}s`, {
+          fontSize: '20px',
+          color: '#0000ff'
+        });
+        this.buffTexts.push(text);
+        this.uiContainer.add(text);
+        yOffset += 25;
+      }
+
+      if (timers.damageBoost > 0) {
+        const text = this.add.text(xPosition, yOffset, `Damage Boost: ${timers.damageBoost.toFixed(1)}s`, {
+          fontSize: '20px',
+          color: '#ff0000'
+        });
+        this.buffTexts.push(text);
+        this.uiContainer.add(text);
+        yOffset += 25;
+      }
+
+      if (timers.speedBoost > 0) {
+        const text = this.add.text(xPosition, yOffset, `Speed Boost: ${timers.speedBoost.toFixed(1)}s`, {
+          fontSize: '20px',
+          color: '#ffff00'
+        });
+        this.buffTexts.push(text);
+        this.uiContainer.add(text);
+      }
     }
   }
 
@@ -485,6 +533,7 @@ export class GameScene extends Phaser.Scene {
 
     // Update UI
     this.updateHealthBar();
+    this.scoreText.setText(`Score: ${this.player.score}`);
   }
 
   private getPlayerInputDirection(): { x: number; y: number } {
@@ -751,6 +800,15 @@ export class GameScene extends Phaser.Scene {
           this.sound.play('collectible_pickup');
         }
 
+        // Show collectible message
+        // const message = this.getCollectibleMessage(remoteCollectible.type);
+        // this.collectibleMessageText.setText(message);
+        // this.collectibleMessageText.setVisible(true);
+        // Hide after 2 seconds
+        this.time.delayedCall(2000, () => {
+          this.collectibleMessageText.setVisible(false);
+        });
+
         remoteCollectible.destroy();
         this.remoteCollectibles.delete(id);
         this.collectiblePool.release(remoteCollectible);
@@ -774,6 +832,23 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private getCollectibleMessage(type: CollectibleEnum): string {
+    switch (type) {
+      case CollectibleEnum.HEALTH:
+        return 'Picked up Health Potion!';
+      case CollectibleEnum.SHIELD:
+        return 'Picked up Shield! (5s invulnerability)';
+      case CollectibleEnum.DAMAGE_BOOST:
+        return 'Picked up Damage Boost! (10s)';
+      case CollectibleEnum.SPEED_BOOST:
+        return 'Picked up Speed Boost! (10s)';
+      case CollectibleEnum.COIN:
+        return 'Picked up Coin!';
+      default:
+        return 'Picked up Collectible!';
+    }
+  }
+
   private updateUIFromServer(gameState: GameStateData) {
     this.playerCountText.setText(`Players: ${gameState.players.length}`);
 
@@ -787,6 +862,9 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.waveText.setText(`Wave: ${gameState.wave}`);
     }
+
+    // Update buff UI
+    this.updateBuffUI(gameState);
 
     if (gameState.state === GameState.WAITING) {
       this.waitingText.setText('Waiting for another player...');

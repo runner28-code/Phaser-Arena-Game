@@ -46,7 +46,7 @@ class GameScene extends phaser_1.default.Scene {
         this.player = new Player_1.Player(this, constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2, 'player_idle');
         if (this.mode === 'multi') {
             // Initialize network manager for multiplayer
-            this.networkManager = new NetworkManager_1.NetworkManager('ws://localhost:8080');
+            this.networkManager = new NetworkManager_1.NetworkManager('ws://192.168.110.132:8080');
             this.networkManager.connect().then(() => {
                 console.log('Connected to multiplayer server');
                 this.setupNetworkHandlers();
@@ -80,6 +80,13 @@ class GameScene extends phaser_1.default.Scene {
         }).setOrigin(0.5);
         this.deathAlertText.setVisible(false);
         this.uiContainer.add(this.deathAlertText);
+        // Create collectible message text (for multiplayer)
+        this.collectibleMessageText = this.add.text(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2 + 50, '', {
+            fontSize: '24px',
+            color: '#00ff00'
+        }).setOrigin(0.5);
+        this.collectibleMessageText.setVisible(false);
+        this.uiContainer.add(this.collectibleMessageText);
         // Create health bar
         this.createHealthBar();
         // Create score display
@@ -273,37 +280,74 @@ class GameScene extends phaser_1.default.Scene {
         // Initialize upgrade UI
         this.updateUpgradeUI();
     }
-    updateBuffUI() {
+    updateBuffUI(gameState) {
         // Clear existing texts
         this.buffTexts.forEach(text => text.destroy());
         this.buffTexts = [];
-        const timers = this.player.getBuffTimers();
         let yOffset = 70;
-        if (timers.invulnerable > 0) {
-            const text = this.add.text(10, yOffset, `Shield: ${timers.invulnerable.toFixed(1)}s`, {
-                fontSize: '20px',
-                color: '#0000ff'
-            });
-            this.buffTexts.push(text);
-            this.uiContainer.add(text);
-            yOffset += 25;
+        const xPosition = constants_1.GAME_WIDTH - 250; // Right side of the window
+        if (this.mode === 'multi' && gameState) {
+            // Multiplayer: get buff data from server
+            const localPlayerId = this.networkManager.getPlayerId();
+            const localPlayerData = gameState.players.find(p => p.id === localPlayerId);
+            if (!localPlayerData)
+                return;
+            if (localPlayerData.invulnerableTimer > 0) {
+                const text = this.add.text(xPosition, yOffset, `Shield: ${(localPlayerData.invulnerableTimer / 1000).toFixed(1)}s`, {
+                    fontSize: '20px',
+                    color: '#0000ff'
+                });
+                this.buffTexts.push(text);
+                this.uiContainer.add(text);
+                yOffset += 25;
+            }
+            if (localPlayerData.damageBoostTimer > 0) {
+                const text = this.add.text(xPosition, yOffset, `Damage Boost: ${(localPlayerData.damageBoostTimer / 1000).toFixed(1)}s`, {
+                    fontSize: '20px',
+                    color: '#ff0000'
+                });
+                this.buffTexts.push(text);
+                this.uiContainer.add(text);
+                yOffset += 25;
+            }
+            if (localPlayerData.speedBoostTimer > 0) {
+                const text = this.add.text(xPosition, yOffset, `Speed Boost: ${(localPlayerData.speedBoostTimer / 1000).toFixed(1)}s`, {
+                    fontSize: '20px',
+                    color: '#ffff00'
+                });
+                this.buffTexts.push(text);
+                this.uiContainer.add(text);
+            }
         }
-        if (timers.damageBoost > 0) {
-            const text = this.add.text(10, yOffset, `Damage Boost: ${timers.damageBoost.toFixed(1)}s`, {
-                fontSize: '20px',
-                color: '#ff0000'
-            });
-            this.buffTexts.push(text);
-            this.uiContainer.add(text);
-            yOffset += 25;
-        }
-        if (timers.speedBoost > 0) {
-            const text = this.add.text(10, yOffset, `Speed Boost: ${timers.speedBoost.toFixed(1)}s`, {
-                fontSize: '20px',
-                color: '#ffff00'
-            });
-            this.buffTexts.push(text);
-            this.uiContainer.add(text);
+        else if (this.mode === 'single') {
+            // Single-player: use player's buff timers
+            const timers = this.player.getBuffTimers();
+            if (timers.invulnerable > 0) {
+                const text = this.add.text(xPosition, yOffset, `Shield: ${timers.invulnerable.toFixed(1)}s`, {
+                    fontSize: '20px',
+                    color: '#0000ff'
+                });
+                this.buffTexts.push(text);
+                this.uiContainer.add(text);
+                yOffset += 25;
+            }
+            if (timers.damageBoost > 0) {
+                const text = this.add.text(xPosition, yOffset, `Damage Boost: ${timers.damageBoost.toFixed(1)}s`, {
+                    fontSize: '20px',
+                    color: '#ff0000'
+                });
+                this.buffTexts.push(text);
+                this.uiContainer.add(text);
+                yOffset += 25;
+            }
+            if (timers.speedBoost > 0) {
+                const text = this.add.text(xPosition, yOffset, `Speed Boost: ${timers.speedBoost.toFixed(1)}s`, {
+                    fontSize: '20px',
+                    color: '#ffff00'
+                });
+                this.buffTexts.push(text);
+                this.uiContainer.add(text);
+            }
         }
     }
     showUpgradeSelection() {
@@ -409,6 +453,7 @@ class GameScene extends phaser_1.default.Scene {
         this.gameTimer += delta;
         // Update UI
         this.updateHealthBar();
+        this.scoreText.setText(`Score: ${this.player.score}`);
     }
     getPlayerInputDirection() {
         let x = 0;
@@ -654,6 +699,14 @@ class GameScene extends phaser_1.default.Scene {
                 if (this.sound.get('collectible_pickup')) {
                     this.sound.play('collectible_pickup');
                 }
+                // Show collectible message
+                // const message = this.getCollectibleMessage(remoteCollectible.type);
+                // this.collectibleMessageText.setText(message);
+                // this.collectibleMessageText.setVisible(true);
+                // Hide after 2 seconds
+                this.time.delayedCall(2000, () => {
+                    this.collectibleMessageText.setVisible(false);
+                });
                 remoteCollectible.destroy();
                 this.remoteCollectibles.delete(id);
                 this.collectiblePool.release(remoteCollectible);
@@ -675,6 +728,22 @@ class GameScene extends phaser_1.default.Scene {
                 return 'coin';
         }
     }
+    getCollectibleMessage(type) {
+        switch (type) {
+            case types_1.CollectibleType.HEALTH:
+                return 'Picked up Health Potion!';
+            case types_1.CollectibleType.SHIELD:
+                return 'Picked up Shield! (5s invulnerability)';
+            case types_1.CollectibleType.DAMAGE_BOOST:
+                return 'Picked up Damage Boost! (10s)';
+            case types_1.CollectibleType.SPEED_BOOST:
+                return 'Picked up Speed Boost! (10s)';
+            case types_1.CollectibleType.COIN:
+                return 'Picked up Coin!';
+            default:
+                return 'Picked up Collectible!';
+        }
+    }
     updateUIFromServer(gameState) {
         this.playerCountText.setText(`Players: ${gameState.players.length}`);
         // Update wave text
@@ -688,6 +757,8 @@ class GameScene extends phaser_1.default.Scene {
         else {
             this.waveText.setText(`Wave: ${gameState.wave}`);
         }
+        // Update buff UI
+        this.updateBuffUI(gameState);
         if (gameState.state === types_1.GameState.WAITING) {
             this.waitingText.setText('Waiting for another player...');
         }

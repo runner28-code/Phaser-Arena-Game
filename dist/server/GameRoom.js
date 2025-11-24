@@ -46,7 +46,10 @@ class GameRoom {
             score: 0,
             isAttacking: false,
             attackEndTime: 0,
-            currentState: 'idle'
+            currentState: 'idle',
+            invulnerableTimer: 0,
+            damageBoostTimer: 0,
+            speedBoostTimer: 0
         };
         console.log(player.id, player.speed, player.direction, player.facingDirection, player.isAttacking);
         this.players.set(playerId, player);
@@ -153,9 +156,13 @@ class GameRoom {
             const dy = enemy.y - player.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             if (distance < 50) { // attack range
-                enemy.health -= player.damage;
+                const effectiveDamage = player.damageBoostTimer > 0 ? player.damage * 1.5 : player.damage;
+                enemy.health -= effectiveDamage;
                 if (enemy.health <= 0) {
                     enemy.isAlive = false;
+                    // Award score based on enemy type
+                    const scoreReward = enemy.type === index_1.EnemyType.SLIME ? 10 : enemy.type === index_1.EnemyType.GOBLIN ? 20 : 10;
+                    player.score += scoreReward;
                     // Spawn random collectible
                     this.spawnRandomCollectible(enemy.x, enemy.y);
                     // Remove enemy after a delay
@@ -205,6 +212,25 @@ class GameRoom {
                 }
                 else {
                     player.currentState = 'idle';
+                }
+            }
+            // Update buff timers
+            if (player.invulnerableTimer > 0) {
+                player.invulnerableTimer -= this.deltaTime * 1000; // Convert to milliseconds
+                if (player.invulnerableTimer <= 0) {
+                    player.invulnerableTimer = 0;
+                }
+            }
+            if (player.damageBoostTimer > 0) {
+                player.damageBoostTimer -= this.deltaTime * 1000;
+                if (player.damageBoostTimer <= 0) {
+                    player.damageBoostTimer = 0;
+                }
+            }
+            if (player.speedBoostTimer > 0) {
+                player.speedBoostTimer -= this.deltaTime * 1000;
+                if (player.speedBoostTimer <= 0) {
+                    player.speedBoostTimer = 0;
                 }
             }
         }
@@ -276,15 +302,17 @@ class GameRoom {
                 }
                 // Attack if close
                 if (distance < 50) { // attack range
-                    nearestPlayer.health -= enemy.damage;
-                    if (nearestPlayer.health <= 0) {
-                        nearestPlayer.state = index_1.PlayerState.DEAD;
-                        // Notify all players that this player died
-                        this.wsServer.notifyPlayerDied(nearestPlayer.id);
-                        // Check if all players are dead
-                        const livingPlayers = Array.from(this.players.values()).filter(p => p.state !== index_1.PlayerState.DEAD);
-                        if (livingPlayers.length === 0) {
-                            this.endGame();
+                    if (nearestPlayer.invulnerableTimer <= 0) { // Only damage if not invulnerable
+                        nearestPlayer.health -= enemy.damage;
+                        if (nearestPlayer.health <= 0) {
+                            nearestPlayer.state = index_1.PlayerState.DEAD;
+                            // Notify all players that this player died
+                            this.wsServer.notifyPlayerDied(nearestPlayer.id);
+                            // Check if all players are dead
+                            const livingPlayers = Array.from(this.players.values()).filter(p => p.state !== index_1.PlayerState.DEAD);
+                            if (livingPlayers.length === 0) {
+                                this.endGame();
+                            }
                         }
                     }
                 }
@@ -319,16 +347,13 @@ class GameRoom {
                 player.health = Math.min(player.maxHealth, player.health + collectible.value);
                 break;
             case index_1.CollectibleType.SHIELD:
-                // For multiplayer, we could add temporary buffs, but for simplicity, just give health
-                player.health = Math.min(player.maxHealth, player.health + 20);
+                player.invulnerableTimer = collectible.value * 1000; // Convert to milliseconds
                 break;
             case index_1.CollectibleType.DAMAGE_BOOST:
-                // For multiplayer, just give score bonus
-                player.score += 50;
+                player.damageBoostTimer = collectible.value * 1000;
                 break;
             case index_1.CollectibleType.SPEED_BOOST:
-                // For multiplayer, just give score bonus
-                player.score += 50;
+                player.speedBoostTimer = collectible.value * 1000;
                 break;
         }
     }

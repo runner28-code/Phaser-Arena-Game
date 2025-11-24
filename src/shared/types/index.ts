@@ -48,6 +48,10 @@ export interface PlayerData {
      isAttacking: boolean;
      attackEndTime: number;
      currentState: 'idle' | 'walking' | 'attacking';
+     // Buff timers
+     invulnerableTimer: number;
+     damageBoostTimer: number;
+     speedBoostTimer: number;
 }
 
 // Enemy data
