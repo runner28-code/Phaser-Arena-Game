@@ -30,10 +30,10 @@ export class Collectible extends Phaser.Physics.Matter.Sprite {
   private setVisualFeedback(): void {
     switch (this.type) {
       case CollectibleEnum.HEALTH:
-        this.setScale(0.5);
+        this.setScale(1);
         break;
       case CollectibleEnum.COIN:
-        this.setScale(0.1);
+        this.setScale(0.05);
         break;
       case CollectibleEnum.SHIELD:
         this.setScale(0.1);

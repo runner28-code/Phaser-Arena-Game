@@ -730,7 +730,8 @@ export class GameScene extends Phaser.Scene {
     collectibles.forEach(collectibleData => {
       let remoteCollectible = this.remoteCollectibles.get(collectibleData.id);
       if (!remoteCollectible) {
-        remoteCollectible = new Collectible(this, collectibleData.x, collectibleData.y, 'coin', collectibleData.type, collectibleData.value);
+        const texture = this.getCollectibleTexture(collectibleData.type);
+        remoteCollectible = new Collectible(this, collectibleData.x, collectibleData.y, texture, collectibleData.type, collectibleData.value);
         this.remoteCollectibles.set(collectibleData.id, remoteCollectible);
       }
 
@@ -744,11 +745,33 @@ export class GameScene extends Phaser.Scene {
     const currentCollectibleIds = new Set(collectibles.map(c => c.id));
     this.remoteCollectibles.forEach((remoteCollectible, id) => {
       if (!currentCollectibleIds.has(id)) {
+        // Play collection feedback
+        this.cameras.main.flash(200, 255, 255, 255); // White flash
+        if (this.sound.get('collectible_pickup')) {
+          this.sound.play('collectible_pickup');
+        }
+
         remoteCollectible.destroy();
         this.remoteCollectibles.delete(id);
         this.collectiblePool.release(remoteCollectible);
       }
     });
+  }
+
+  private getCollectibleTexture(type: CollectibleEnum): string {
+    switch (type) {
+      case CollectibleEnum.HEALTH:
+        return 'health_potion';
+      case CollectibleEnum.SHIELD:
+        return 'shield';
+      case CollectibleEnum.DAMAGE_BOOST:
+        return 'damage_boost';
+      case CollectibleEnum.SPEED_BOOST:
+        return 'speed_boost';
+      case CollectibleEnum.COIN:
+      default:
+        return 'coin';
+    }
   }
 
   private updateUIFromServer(gameState: GameStateData) {

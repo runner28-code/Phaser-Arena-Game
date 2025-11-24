@@ -174,8 +174,8 @@ export class GameRoom {
         enemy.health -= player.damage;
         if (enemy.health <= 0) {
           enemy.isAlive = false;
-          // Spawn collectible
-          this.spawnCollectible(enemy.x, enemy.y, CollectibleType.COIN, 10);
+          // Spawn random collectible
+          this.spawnRandomCollectible(enemy.x, enemy.y);
           // Remove enemy after a delay
           setTimeout(() => {
             this.enemies.delete(enemyId);
@@ -352,8 +352,50 @@ export class GameRoom {
       case CollectibleType.HEALTH:
         player.health = Math.min(player.maxHealth, player.health + collectible.value);
         break;
-      // Add other types as needed
+      case CollectibleType.SHIELD:
+        // For multiplayer, we could add temporary buffs, but for simplicity, just give health
+        player.health = Math.min(player.maxHealth, player.health + 20);
+        break;
+      case CollectibleType.DAMAGE_BOOST:
+        // For multiplayer, just give score bonus
+        player.score += 50;
+        break;
+      case CollectibleType.SPEED_BOOST:
+        // For multiplayer, just give score bonus
+        player.score += 50;
+        break;
     }
+  }
+
+  private spawnRandomCollectible(x: number, y: number) {
+    const rand = Math.random();
+    let type: CollectibleType;
+    let texture: string;
+    let value: number;
+
+    if (rand < 0.4) {
+      type = CollectibleType.HEALTH;
+      texture = 'health_potion';
+      value = 20;
+    } else if (rand < 0.6) {
+      type = CollectibleType.SHIELD;
+      texture = 'shield';
+      value = 5; // 5 seconds
+    } else if (rand < 0.8) {
+      type = CollectibleType.DAMAGE_BOOST;
+      texture = 'damage_boost';
+      value = 10; // 10 seconds
+    } else if (rand < 0.9) {
+      type = CollectibleType.SPEED_BOOST;
+      texture = 'speed_boost';
+      value = 10; // 10 seconds
+    } else {
+      type = CollectibleType.COIN;
+      texture = 'coin';
+      value = 10;
+    }
+
+    this.spawnCollectible(x, y, type, value);
   }
 
   private spawnCollectible(x: number, y: number, type: CollectibleType, value: number = 1) {

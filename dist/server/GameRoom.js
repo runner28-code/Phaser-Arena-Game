@@ -156,8 +156,8 @@ class GameRoom {
                 enemy.health -= player.damage;
                 if (enemy.health <= 0) {
                     enemy.isAlive = false;
-                    // Spawn collectible
-                    this.spawnCollectible(enemy.x, enemy.y, index_1.CollectibleType.COIN, 10);
+                    // Spawn random collectible
+                    this.spawnRandomCollectible(enemy.x, enemy.y);
                     // Remove enemy after a delay
                     setTimeout(() => {
                         this.enemies.delete(enemyId);
@@ -318,8 +318,51 @@ class GameRoom {
             case index_1.CollectibleType.HEALTH:
                 player.health = Math.min(player.maxHealth, player.health + collectible.value);
                 break;
-            // Add other types as needed
+            case index_1.CollectibleType.SHIELD:
+                // For multiplayer, we could add temporary buffs, but for simplicity, just give health
+                player.health = Math.min(player.maxHealth, player.health + 20);
+                break;
+            case index_1.CollectibleType.DAMAGE_BOOST:
+                // For multiplayer, just give score bonus
+                player.score += 50;
+                break;
+            case index_1.CollectibleType.SPEED_BOOST:
+                // For multiplayer, just give score bonus
+                player.score += 50;
+                break;
         }
+    }
+    spawnRandomCollectible(x, y) {
+        const rand = Math.random();
+        let type;
+        let texture;
+        let value;
+        if (rand < 0.4) {
+            type = index_1.CollectibleType.HEALTH;
+            texture = 'health_potion';
+            value = 20;
+        }
+        else if (rand < 0.6) {
+            type = index_1.CollectibleType.SHIELD;
+            texture = 'shield';
+            value = 5; // 5 seconds
+        }
+        else if (rand < 0.8) {
+            type = index_1.CollectibleType.DAMAGE_BOOST;
+            texture = 'damage_boost';
+            value = 10; // 10 seconds
+        }
+        else if (rand < 0.9) {
+            type = index_1.CollectibleType.SPEED_BOOST;
+            texture = 'speed_boost';
+            value = 10; // 10 seconds
+        }
+        else {
+            type = index_1.CollectibleType.COIN;
+            texture = 'coin';
+            value = 10;
+        }
+        this.spawnCollectible(x, y, type, value);
     }
     spawnCollectible(x, y, type, value = 1) {
         const collectible = {

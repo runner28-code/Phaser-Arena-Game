@@ -25,10 +25,10 @@ class Collectible extends phaser_1.default.Physics.Matter.Sprite {
     setVisualFeedback() {
         switch (this.type) {
             case types_1.CollectibleType.HEALTH:
-                this.setScale(0.5);
+                this.setScale(1);
                 break;
             case types_1.CollectibleType.COIN:
-                this.setScale(0.1);
+                this.setScale(0.05);
                 break;
             case types_1.CollectibleType.SHIELD:
                 this.setScale(0.1);
