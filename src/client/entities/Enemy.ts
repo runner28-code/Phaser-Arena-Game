@@ -216,7 +216,6 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
 
   takeDamage(amount: number): void {
     this.health -= amount;
-    this.playDamageSound();
     if (this.health <= 0) {
       this.die();
     }
@@ -271,15 +270,11 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
 
 
   protected playDamageSound(): void {
-    if (this.scene.sound.get('enemy_damage')) {
       this.scene.sound.play('enemy_damage');
-    }
   }
 
   protected playDeathSound(): void {
-    if (this.scene.sound.get('enemy_death')) {
       this.scene.sound.play('enemy_death');
-    }
   }
 
   protected getDirectionString(): string {

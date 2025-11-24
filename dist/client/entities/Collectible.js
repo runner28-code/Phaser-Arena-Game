@@ -88,9 +88,8 @@ class Collectible extends phaser_1.default.Physics.Matter.Sprite {
         };
     }
     playPickupSound() {
-        if (this.scene.sound.get('collectible_pickup')) {
             this.scene.sound.play('collectible_pickup');
-        }
+        
     }
     reset() {
         this.x = 0;

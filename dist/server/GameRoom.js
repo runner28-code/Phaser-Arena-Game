@@ -103,8 +103,8 @@ class GameRoom {
                 player.facingDirection = input.direction;
             }
             // Movement is based on input direction
-            player.x += input.direction.x * player.speed * this.deltaTime;
-            player.y += input.direction.y * player.speed * this.deltaTime;
+            player.x += input.direction.x * player.speed;
+            player.y += input.direction.y * player.speed;
             // Keep player in bounds
             player.x = Math.max(0, Math.min(constants_1.GAME_WIDTH, player.x));
             player.y = Math.max(0, Math.min(constants_1.GAME_HEIGHT, player.y));

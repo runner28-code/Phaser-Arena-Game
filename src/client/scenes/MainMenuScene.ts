@@ -25,6 +25,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     singlePlayerButton.on('pointerdown', () => {
       this.scene.start('Game', { mode: 'single' });
+      this.sound.play('btn_click');
     });
 
     // Multiplayer button
@@ -35,6 +36,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     multiplayerButton.on('pointerdown', () => {
       this.scene.start('Game', { mode: 'multi' });
+      this.sound.play('btn_click');
     });
 
     // Settings button
@@ -45,6 +47,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     this.settingsButton.on('pointerdown', () => {
       this.toggleVolumeControls();
+      this.sound.play('btn_click');
     });
 
     // Create volume controls (initially hidden)

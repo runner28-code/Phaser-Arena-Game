@@ -25,6 +25,8 @@ export class Player extends Phaser.Physics.Matter.Sprite {
   public state: PlayerStateEnum;
   private attackCooldown: number;
   private lastAttackTime: number;
+  private soundCooldown: number = 550; // 200ms between sound plays
+  private lastSoundTime: number = 0;
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd: {
     up: Phaser.Input.Keyboard.Key;
@@ -349,14 +351,18 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     });
   }
 
-  private playAttackSound(): void {
-    if (this.scene.sound.get('player_attack')) {
-      this.scene.sound.play('player_attack');
+  public playAttackSound(): void {
+    const now = this.scene.time.now;
+    if (now - this.lastSoundTime > this.soundCooldown) {
+      console.log('Playing player_attack sound');
+      this.scene.sound.play('player_attack', { volume: 1 });
+      this.lastSoundTime = now;
     }
   }
 
   takeDamage(amount: number): void {
     if (this.invulnerable) return;
+    this.scene.sound.play('enemy_damage');
     this.health -= amount;
     if (this.health <= 0) {
       this.die();

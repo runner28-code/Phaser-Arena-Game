@@ -4,7 +4,7 @@ exports.COLLISION_CATEGORY_OBSTACLE = exports.COLLISION_CATEGORY_COLLECTIBLE = e
 exports.GAME_WIDTH = 800;
 exports.GAME_HEIGHT = 600;
 exports.SERVER_PORT = 8080;
-exports.UPDATE_RATE = 60;
+exports.UPDATE_RATE = 20;
 exports.INPUT_RATE = 60;
 exports.TILE_SIZE = 32;
 exports.PLAYER_SPEED = 1;

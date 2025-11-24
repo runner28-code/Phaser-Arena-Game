@@ -99,9 +99,7 @@ export class Collectible extends Phaser.Physics.Matter.Sprite {
   }
 
   private playPickupSound(): void {
-    if (this.scene.sound.get('collectible_pickup')) {
       this.scene.sound.play('collectible_pickup');
-    }
   }
 
   public reset(): void {

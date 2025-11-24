@@ -10,6 +10,8 @@ const types_1 = require("../../shared/types");
 class Player extends phaser_1.default.Physics.Matter.Sprite {
     constructor(scene, x, y, texture_idle) {
         super(scene.matter.world, x, y, texture_idle);
+        this.soundCooldown = 550; // 200ms between sound plays
+        this.lastSoundTime = 0;
         this.facingDirection = { x: 1, y: 0 };
         // Buff properties
         this.invulnerable = false;
@@ -284,8 +286,11 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
         });
     }
     playAttackSound() {
-        if (this.scene.sound.get('player_attack')) {
-            this.scene.sound.play('player_attack');
+        const now = this.scene.time.now;
+        if (now - this.lastSoundTime > this.soundCooldown) {
+            console.log('Playing player_attack sound');
+            this.scene.sound.play('player_attack', { volume: 1 });
+            this.lastSoundTime = now;
         }
     }
     takeDamage(amount) {

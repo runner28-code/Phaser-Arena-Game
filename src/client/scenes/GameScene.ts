@@ -32,6 +32,11 @@ export class GameScene extends Phaser.Scene {
     private waitingText!: Phaser.GameObjects.Text;
     private deathAlertText!: Phaser.GameObjects.Text;
     private collectibleMessageText!: Phaser.GameObjects.Text;
+    private shieldText!: Phaser.GameObjects.Text;
+    private damageBoostText!: Phaser.GameObjects.Text;
+    private speedBoostText!: Phaser.GameObjects.Text;
+    private wasAttacking: boolean = false;
+    private previousHealth: number = 0;
 
     // Object pools for single-player performance optimization
     private enemyPool!: ObjectPool<Enemy>;
@@ -111,6 +116,29 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.collectibleMessageText.setVisible(false);
     this.uiContainer.add(this.collectibleMessageText);
+
+    // Create buff timer texts (for single-player)
+    const xPosition = GAME_WIDTH - 220;
+    this.shieldText = this.add.text(xPosition, 70, '', {
+      fontSize: '20px',
+      color: '#0000ff'
+    });
+    this.shieldText.setVisible(false);
+    this.uiContainer.add(this.shieldText);
+
+    this.damageBoostText = this.add.text(xPosition, 95, '', {
+      fontSize: '20px',
+      color: '#ff0000'
+    });
+    this.damageBoostText.setVisible(false);
+    this.uiContainer.add(this.damageBoostText);
+
+    this.speedBoostText = this.add.text(xPosition, 120, '', {
+      fontSize: '20px',
+      color: '#ffff00'
+    });
+    this.speedBoostText.setVisible(false);
+    this.uiContainer.add(this.speedBoostText);
 
     // Create health bar
     this.createHealthBar();
@@ -337,78 +365,61 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateBuffUI(gameState?: GameStateData): void {
-    // Clear existing texts
-    this.buffTexts.forEach(text => text.destroy());
-    this.buffTexts = [];
-
-    let yOffset = 70;
-    const xPosition = GAME_WIDTH - 250; // Right side of the window
-
     if (this.mode === 'multi' && gameState) {
       // Multiplayer: get buff data from server
       const localPlayerId = this.networkManager!.getPlayerId();
       const localPlayerData = gameState.players.find(p => p.id === localPlayerId);
       if (!localPlayerData) return;
 
+      // Update shield text
       if (localPlayerData.invulnerableTimer > 0) {
-        const text = this.add.text(xPosition, yOffset, `Shield: ${(localPlayerData.invulnerableTimer / 1000).toFixed(1)}s`, {
-          fontSize: '20px',
-          color: '#0000ff'
-        });
-        this.buffTexts.push(text);
-        this.uiContainer.add(text);
-        yOffset += 25;
+        this.shieldText.setText(`Shield: ${(localPlayerData.invulnerableTimer / 1000).toFixed(1)}s`);
+        this.shieldText.setVisible(true);
+      } else {
+        this.shieldText.setVisible(false);
       }
 
+      // Update damage boost text
       if (localPlayerData.damageBoostTimer > 0) {
-        const text = this.add.text(xPosition, yOffset, `Damage Boost: ${(localPlayerData.damageBoostTimer / 1000).toFixed(1)}s`, {
-          fontSize: '20px',
-          color: '#ff0000'
-        });
-        this.buffTexts.push(text);
-        this.uiContainer.add(text);
-        yOffset += 25;
+        this.damageBoostText.setText(`Damage Boost: ${(localPlayerData.damageBoostTimer / 1000).toFixed(1)}s`);
+        this.damageBoostText.setVisible(true);
+      } else {
+        this.damageBoostText.setVisible(false);
       }
 
+      // Update speed boost text
       if (localPlayerData.speedBoostTimer > 0) {
-        const text = this.add.text(xPosition, yOffset, `Speed Boost: ${(localPlayerData.speedBoostTimer / 1000).toFixed(1)}s`, {
-          fontSize: '20px',
-          color: '#ffff00'
-        });
-        this.buffTexts.push(text);
-        this.uiContainer.add(text);
+        this.speedBoostText.setText(`Speed Boost: ${(localPlayerData.speedBoostTimer / 1000).toFixed(1)}s`);
+        this.speedBoostText.setVisible(true);
+      } else {
+        this.speedBoostText.setVisible(false);
       }
     } else if (this.mode === 'single') {
       // Single-player: use player's buff timers
       const timers = this.player.getBuffTimers();
 
+      // Update shield text
       if (timers.invulnerable > 0) {
-        const text = this.add.text(xPosition, yOffset, `Shield: ${timers.invulnerable.toFixed(1)}s`, {
-          fontSize: '20px',
-          color: '#0000ff'
-        });
-        this.buffTexts.push(text);
-        this.uiContainer.add(text);
-        yOffset += 25;
+        this.shieldText.setText(`Shield: ${Math.ceil(timers.invulnerable)}s`);
+        this.shieldText.setVisible(true);
+      } else {
+        this.shieldText.setVisible(false);
       }
 
+      // Update damage boost text
       if (timers.damageBoost > 0) {
-        const text = this.add.text(xPosition, yOffset, `Damage Boost: ${timers.damageBoost.toFixed(1)}s`, {
-          fontSize: '20px',
-          color: '#ff0000'
-        });
-        this.buffTexts.push(text);
-        this.uiContainer.add(text);
-        yOffset += 25;
+        this.damageBoostText.setText(`Damage Boost: ${Math.ceil(timers.damageBoost)}s`);
+        this.damageBoostText.setVisible(true);
+      } else {
+        this.damageBoostText.setVisible(false);
       }
 
+      // Update speed boost text
       if (timers.speedBoost > 0) {
-        const text = this.add.text(xPosition, yOffset, `Speed Boost: ${timers.speedBoost.toFixed(1)}s`, {
-          fontSize: '20px',
-          color: '#ffff00'
-        });
-        this.buffTexts.push(text);
-        this.uiContainer.add(text);
+        this.speedBoostText.setText(`Speed Boost: ${Math.ceil(timers.speedBoost)}s`);
+        this.speedBoostText.setVisible(true);
+      } else {
+        this.speedBoostText.setVisible(false);
       }
     }
   }
@@ -478,10 +489,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private startBackgroundMusic(): void {
-    if (this.sound.get('background_music')) {
       const music = this.sound.add('background_music', { loop: true, volume: 0.5 });
       music.play();
-    }
   }
 
   private updateSinglePlayer(delta: number) {
@@ -632,6 +641,13 @@ export class GameScene extends Phaser.Scene {
       this.player.x = localPlayerData.x;
       this.player.y = localPlayerData.y;
 
+      // Check for damage taken
+      // if (localPlayerData.health < this.previousHealth) {
+      //   console.log('Player took damage, playing sound');
+      //     this.sound.play('enemy_damage');   
+      // }
+      this.previousHealth = localPlayerData.health;
+
       this.player.health = localPlayerData.health;
       this.player.maxHealth = localPlayerData.maxHealth;
       // Sync facing direction with server data
@@ -652,8 +668,13 @@ export class GameScene extends Phaser.Scene {
       }
 
       if (localPlayerData.currentState === 'attacking') {
+        console.log('Player is attacking, wasAttacking:', this.wasAttacking);
         this.player.state = PlayerStateEnum.ATTACKING;
         this.player.anims.play(`player-attack_${dir}`, true);
+        // Play attack sound if just started attacking
+          console.log('Playing attack sound');
+          this.player.playAttackSound();
+        
       } else if (localPlayerData.currentState === 'walking') {
         this.player.state = PlayerStateEnum.WALKING;
         this.player.anims.play(`player-walk_${dir}`, true);
@@ -661,6 +682,9 @@ export class GameScene extends Phaser.Scene {
         this.player.state = PlayerStateEnum.IDLE;
         this.player.anims.play(`player-idle_${dir}`, true);
       }
+
+      // Update attack state tracker
+      this.wasAttacking = localPlayerData.currentState === 'attacking';
 
       // Handle death
       if (localPlayerData.state === PlayerState.DEAD && this.player.health > 0) {
@@ -748,6 +772,8 @@ export class GameScene extends Phaser.Scene {
         remoteEnemy.y = enemyData.y;
         remoteEnemy.health = enemyData.health;
         if (!enemyData.isAlive && remoteEnemy.active) {
+          // Play death sound
+            this.sound.play('enemy_death');
           remoteEnemy.setActive(false);
           remoteEnemy.setVisible(false);
         } else if (enemyData.isAlive) {
@@ -796,9 +822,8 @@ export class GameScene extends Phaser.Scene {
       if (!currentCollectibleIds.has(id)) {
         // Play collection feedback
         this.cameras.main.flash(200, 255, 255, 255); // White flash
-        if (this.sound.get('collectible_pickup')) {
           this.sound.play('collectible_pickup');
-        }
+        
 
         // Show collectible message
         // const message = this.getCollectibleMessage(remoteCollectible.type);
