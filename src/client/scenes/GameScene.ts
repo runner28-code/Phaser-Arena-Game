@@ -8,13 +8,15 @@ import { SpawnManager } from '../systems/SpawnManager';
 import { ObjectPool } from '../systems/ObjectPool';
 import { NetworkManager } from '../network/NetworkManager';
 import { UpgradeScene } from './UpgradeScene';
-import { GameOverSceneData, PlayerStateEnum, UpgradeType, CollectibleType as CollectibleEnum, GameStateData, PlayerData, GameState, MessageType, PlayerState } from '../../shared/types';
+import { GameOverSceneData, PlayerStateEnum, UpgradeType, CollectibleType as CollectibleEnum, GameStateData, PlayerData, GameState, MessageType, PlayerState, EnemyData, CollectibleData } from '../../shared/types';
 
 export class GameScene extends Phaser.Scene {
     private mode: 'single' | 'multi' = 'single';
     private player!: Player;
     private networkManager?: NetworkManager;
     private remotePlayers: Map<string, RemotePlayer> = new Map();
+    private remoteEnemies: Map<string, Enemy> = new Map();
+    private remoteCollectibles: Map<string, Collectible> = new Map();
     private spawnManager?: SpawnManager; // Only used in single player
     private waveText!: Phaser.GameObjects.Text;
     private buffTexts: Phaser.GameObjects.Text[] = [];
@@ -612,6 +614,12 @@ export class GameScene extends Phaser.Scene {
     // Update remote players
     this.updateRemotePlayers(gameState.players);
 
+    // Update remote enemies
+    this.updateRemoteEnemies(gameState.enemies);
+
+    // Update remote collectibles
+    this.updateRemoteCollectibles(gameState.collectibles);
+
     // Update UI
     this.updateUIFromServer(gameState);
   }
@@ -645,6 +653,75 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private updateRemoteEnemies(enemies: EnemyData[]) {
+    // Update existing remote enemies
+    enemies.forEach(enemyData => {
+      let remoteEnemy = this.remoteEnemies.get(enemyData.id);
+      if (!remoteEnemy) {
+        const newEnemy = Enemy.createEnemy(enemyData.type, this, enemyData.x, enemyData.y);
+        if (newEnemy) {
+          this.remoteEnemies.set(enemyData.id, newEnemy);
+          remoteEnemy = newEnemy;
+        }
+      }
+
+      if (remoteEnemy) {
+        remoteEnemy.x = enemyData.x;
+        remoteEnemy.y = enemyData.y;
+        remoteEnemy.health = enemyData.health;
+        if (!enemyData.isAlive && remoteEnemy.active) {
+          remoteEnemy.setActive(false);
+          remoteEnemy.setVisible(false);
+        } else if (enemyData.isAlive) {
+          // Play walk animation based on facing direction
+          let dir = 'down';
+          if (Math.abs(enemyData.facingDirection.x) > Math.abs(enemyData.facingDirection.y)) {
+            dir = enemyData.facingDirection.x > 0 ? 'right' : 'left';
+          } else {
+            dir = enemyData.facingDirection.y > 0 ? 'down' : 'up';
+          }
+          remoteEnemy.anims.play(`${enemyData.type}_walk_${dir}`, true);
+        }
+      }
+    });
+
+    // Remove dead enemies
+    const currentEnemyIds = new Set(enemies.map(e => e.id));
+    this.remoteEnemies.forEach((remoteEnemy, id) => {
+      if (!currentEnemyIds.has(id)) {
+        remoteEnemy.destroy();
+        this.remoteEnemies.delete(id);
+        this.enemyPool.release(remoteEnemy);
+      }
+    });
+  }
+
+  private updateRemoteCollectibles(collectibles: CollectibleData[]) {
+    // Update existing remote collectibles
+    collectibles.forEach(collectibleData => {
+      let remoteCollectible = this.remoteCollectibles.get(collectibleData.id);
+      if (!remoteCollectible) {
+        remoteCollectible = new Collectible(this, collectibleData.x, collectibleData.y, 'coin', collectibleData.type, collectibleData.value);
+        this.remoteCollectibles.set(collectibleData.id, remoteCollectible);
+      }
+
+      if (remoteCollectible) {
+        remoteCollectible.x = collectibleData.x;
+        remoteCollectible.y = collectibleData.y;
+      }
+    });
+
+    // Remove collected collectibles
+    const currentCollectibleIds = new Set(collectibles.map(c => c.id));
+    this.remoteCollectibles.forEach((remoteCollectible, id) => {
+      if (!currentCollectibleIds.has(id)) {
+        remoteCollectible.destroy();
+        this.remoteCollectibles.delete(id);
+        this.collectiblePool.release(remoteCollectible);
+      }
+    });
+  }
+
   private updateUIFromServer(gameState: GameStateData) {
     this.playerCountText.setText(`Players: ${gameState.players.length}`);
 
@@ -669,6 +746,20 @@ export class GameScene extends Phaser.Scene {
     // Destroy remote players
     this.remotePlayers.forEach(remotePlayer => remotePlayer.destroy());
     this.remotePlayers.clear();
+
+    // Destroy remote enemies
+    this.remoteEnemies.forEach(remoteEnemy => {
+      remoteEnemy.destroy();
+      this.enemyPool.release(remoteEnemy);
+    });
+    this.remoteEnemies.clear();
+
+    // Destroy remote collectibles
+    this.remoteCollectibles.forEach(remoteCollectible => {
+      remoteCollectible.destroy();
+      this.collectiblePool.release(remoteCollectible);
+    });
+    this.remoteCollectibles.clear();
 
     // Destroy single-player enemies
     if (this.spawnManager) {

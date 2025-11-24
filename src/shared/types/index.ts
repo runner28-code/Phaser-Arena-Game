@@ -51,15 +51,16 @@ export interface PlayerData {
 
 // Enemy data
 export interface EnemyData {
-   id: string;
-   x: number;
-   y: number;
-   health: number;
-   maxHealth: number;
-   speed: number;
-   damage: number;
-   type: EnemyType;
-   isAlive: boolean;
+     id: string;
+     x: number;
+     y: number;
+     health: number;
+     maxHealth: number;
+     speed: number;
+     damage: number;
+     type: EnemyType;
+     isAlive: boolean;
+     facingDirection: { x: number; y: number };
 }
 
 // Collectible data

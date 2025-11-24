@@ -20,6 +20,8 @@ class GameScene extends phaser_1.default.Scene {
         super({ key: 'Game' });
         this.mode = 'single';
         this.remotePlayers = new Map();
+        this.remoteEnemies = new Map();
+        this.remoteCollectibles = new Map();
         this.buffTexts = [];
         this.upgradeTexts = [];
         this.gameTimer = 0;
@@ -528,6 +530,10 @@ class GameScene extends phaser_1.default.Scene {
         }
         // Update remote players
         this.updateRemotePlayers(gameState.players);
+        // Update remote enemies
+        this.updateRemoteEnemies(gameState.enemies);
+        // Update remote collectibles
+        this.updateRemoteCollectibles(gameState.collectibles);
         // Update UI
         this.updateUIFromServer(gameState);
     }
@@ -556,6 +562,71 @@ class GameScene extends phaser_1.default.Scene {
             }
         });
     }
+    updateRemoteEnemies(enemies) {
+        // Update existing remote enemies
+        enemies.forEach(enemyData => {
+            let remoteEnemy = this.remoteEnemies.get(enemyData.id);
+            if (!remoteEnemy) {
+                const newEnemy = Enemy_1.Enemy.createEnemy(enemyData.type, this, enemyData.x, enemyData.y);
+                if (newEnemy) {
+                    this.remoteEnemies.set(enemyData.id, newEnemy);
+                    remoteEnemy = newEnemy;
+                }
+            }
+            if (remoteEnemy) {
+                remoteEnemy.x = enemyData.x;
+                remoteEnemy.y = enemyData.y;
+                remoteEnemy.health = enemyData.health;
+                if (!enemyData.isAlive && remoteEnemy.active) {
+                    remoteEnemy.setActive(false);
+                    remoteEnemy.setVisible(false);
+                }
+                else if (enemyData.isAlive) {
+                    // Play walk animation based on facing direction
+                    let dir = 'down';
+                    if (Math.abs(enemyData.facingDirection.x) > Math.abs(enemyData.facingDirection.y)) {
+                        dir = enemyData.facingDirection.x > 0 ? 'right' : 'left';
+                    }
+                    else {
+                        dir = enemyData.facingDirection.y > 0 ? 'down' : 'up';
+                    }
+                    remoteEnemy.anims.play(`${enemyData.type}_walk_${dir}`, true);
+                }
+            }
+        });
+        // Remove dead enemies
+        const currentEnemyIds = new Set(enemies.map(e => e.id));
+        this.remoteEnemies.forEach((remoteEnemy, id) => {
+            if (!currentEnemyIds.has(id)) {
+                remoteEnemy.destroy();
+                this.remoteEnemies.delete(id);
+                this.enemyPool.release(remoteEnemy);
+            }
+        });
+    }
+    updateRemoteCollectibles(collectibles) {
+        // Update existing remote collectibles
+        collectibles.forEach(collectibleData => {
+            let remoteCollectible = this.remoteCollectibles.get(collectibleData.id);
+            if (!remoteCollectible) {
+                remoteCollectible = new Collectible_1.Collectible(this, collectibleData.x, collectibleData.y, 'coin', collectibleData.type, collectibleData.value);
+                this.remoteCollectibles.set(collectibleData.id, remoteCollectible);
+            }
+            if (remoteCollectible) {
+                remoteCollectible.x = collectibleData.x;
+                remoteCollectible.y = collectibleData.y;
+            }
+        });
+        // Remove collected collectibles
+        const currentCollectibleIds = new Set(collectibles.map(c => c.id));
+        this.remoteCollectibles.forEach((remoteCollectible, id) => {
+            if (!currentCollectibleIds.has(id)) {
+                remoteCollectible.destroy();
+                this.remoteCollectibles.delete(id);
+                this.collectiblePool.release(remoteCollectible);
+            }
+        });
+    }
     updateUIFromServer(gameState) {
         this.playerCountText.setText(`Players: ${gameState.players.length}`);
         if (gameState.state === types_1.GameState.WAITING) {
@@ -578,6 +649,18 @@ class GameScene extends phaser_1.default.Scene {
         // Destroy remote players
         this.remotePlayers.forEach(remotePlayer => remotePlayer.destroy());
         this.remotePlayers.clear();
+        // Destroy remote enemies
+        this.remoteEnemies.forEach(remoteEnemy => {
+            remoteEnemy.destroy();
+            this.enemyPool.release(remoteEnemy);
+        });
+        this.remoteEnemies.clear();
+        // Destroy remote collectibles
+        this.remoteCollectibles.forEach(remoteCollectible => {
+            remoteCollectible.destroy();
+            this.collectiblePool.release(remoteCollectible);
+        });
+        this.remoteCollectibles.clear();
         // Destroy single-player enemies
         if (this.spawnManager) {
             const activeEnemies = this.spawnManager.activeEnemies;

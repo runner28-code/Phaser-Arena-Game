@@ -14,7 +14,7 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
         return this.isAlive;
     }
     constructor(scene, x, y, config) {
-        super(scene.matter.world, x, y, config.id); // Assume texture is config.id
+        super(scene.matter.world, x, y, config.animations.idle); // Use idle animation as initial texture
         this.attackCooldown = 1000;
         this.lastAttackTime = 0;
         this.attackRange = 50;

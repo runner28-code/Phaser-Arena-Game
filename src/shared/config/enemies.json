@@ -3,7 +3,7 @@
     "id": "slime",
     "name": "Slime",
     "health": 50,
-    "speed": 0.7,
+    "speed": 40,
     "damage": 10,
     "animations": {
       "idle": "slime_idle",
@@ -16,7 +16,7 @@
     "id": "goblin",
     "name": "Goblin",
     "health": 80,
-    "speed": 0.8,
+    "speed": 40,
     "damage": 15,
     "animations": {
       "idle": "goblin_idle",

@@ -29,7 +29,7 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
   protected facingDirection: { x: number; y: number } = { x: 1, y: 0 };
 
   constructor(scene: Phaser.Scene, x: number, y: number, config: EnemyConfig) {
-    super(scene.matter.world, x, y, config.id); // Assume texture is config.id
+    super(scene.matter.world, x, y, config.animations.idle); // Use idle animation as initial texture
 
     this.config = config;
     this.id = config.id;

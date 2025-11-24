@@ -1,14 +1,20 @@
-import { GameMessage, MessageType, PlayerData, GameState, GameStateData, PlayerInputPayload, JoinGamePayload, PlayerState } from '../shared/types/index';
+import { GameMessage, MessageType, PlayerData, GameState, GameStateData, PlayerInputPayload, JoinGamePayload, PlayerState, EnemyData, CollectibleData, EnemyType, CollectibleType } from '../shared/types/index';
 import { PLAYER_HEALTH, PLAYER_MAX_HEALTH, PLAYER_SPEED, PLAYER_DAMAGE, GAME_WIDTH, GAME_HEIGHT, UPDATE_RATE, ATTACK_COOLDOWN } from '../shared/config/constants';
+import enemiesConfig from '../shared/config/enemies.json';
 import { WebSocketServer } from './WebSocketServer';
 
 export class GameRoom {
   private players: Map<string, PlayerData> = new Map();
+  private enemies: Map<string, EnemyData> = new Map();
+  private collectibles: Map<string, CollectibleData> = new Map();
   private gameState: GameState = GameState.WAITING;
   private gameTime: number = 0;
   private deltaTime: number = 1 / UPDATE_RATE;
   private maxPlayers: number = 2; // Only 2 players for simple multiplayer
   private wsServer: WebSocketServer;
+  private enemySpawnTimer: number = 0;
+  private nextEnemyId: number = 0;
+  private nextCollectibleId: number = 0;
 
   constructor(wsServer: WebSocketServer) {
     this.wsServer = wsServer;
@@ -65,9 +71,9 @@ export class GameRoom {
     this.wsServer.notifyPlayerLeft(playerId);
 
     // End game if a player disconnects
-    if (this.gameState === GameState.PLAYING) {
-      this.endGame();
-    }
+    // if (this.gameState === GameState.PLAYING) {
+    //   this.endGame();
+    // }
   }
 
   handleMessage(playerId: string, message: GameMessage) {
@@ -144,12 +150,34 @@ export class GameRoom {
       const dy = otherPlayer.y - player.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
+      // if (distance < 50) { // attack range
+      //   otherPlayer.health -= player.damage;
+      //   if (otherPlayer.health <= 0) {
+      //     otherPlayer.state = PlayerState.DEAD;
+      //     // Game ends when a player dies
+      //     this.endGame();
+      //   }
+      // }
+    }
+
+    // Check for hits on enemies
+    for (const [enemyId, enemy] of this.enemies) {
+      if (!enemy.isAlive) continue;
+
+      const dx = enemy.x - player.x;
+      const dy = enemy.y - player.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
       if (distance < 50) { // attack range
-        otherPlayer.health -= player.damage;
-        if (otherPlayer.health <= 0) {
-          otherPlayer.state = PlayerState.DEAD;
-          // Game ends when a player dies
-          this.endGame();
+        enemy.health -= player.damage;
+        if (enemy.health <= 0) {
+          enemy.isAlive = false;
+          // Spawn collectible
+          this.spawnCollectible(enemy.x, enemy.y, CollectibleType.COIN, 10);
+          // Remove enemy after a delay
+          setTimeout(() => {
+            this.enemies.delete(enemyId);
+          }, 1000);
         }
       }
     }
@@ -171,6 +199,17 @@ export class GameRoom {
 
     this.gameTime += this.deltaTime;
     this.updatePlayers();
+    this.updateEnemies();
+    this.updateCollectibles();
+
+    // Spawn enemies periodically
+    this.enemySpawnTimer += this.deltaTime;
+    if (this.enemySpawnTimer >= 5) { // Spawn every 5 seconds
+      this.enemySpawnTimer = 0;
+      if (this.enemies.size < 5) { // Max 5 enemies
+        this.spawnEnemy();
+      }
+    }
   }
 
   private updatePlayers() {
@@ -188,11 +227,125 @@ export class GameRoom {
     }
   }
 
+  private spawnEnemy() {
+    const enemyTypes = ['slime', 'goblin'];
+    const randomType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)] as EnemyType;
+    const config = enemiesConfig.find(e => e.id === randomType);
+    if (!config) return;
+
+    const enemy: EnemyData = {
+      id: `enemy_${this.nextEnemyId++}`,
+      x: Math.random() * GAME_WIDTH,
+      y: Math.random() * GAME_HEIGHT,
+      health: config.health,
+      maxHealth: config.health,
+      speed: config.speed,
+      damage: config.damage,
+      type: randomType,
+      isAlive: true,
+      facingDirection: { x: 1, y: 0 }
+    };
+
+    this.enemies.set(enemy.id, enemy);
+  }
+
+  private updateEnemies() {
+    for (const [enemyId, enemy] of this.enemies) {
+      if (!enemy.isAlive) continue;
+
+      // Find nearest player
+      let nearestPlayer: PlayerData | null = null;
+      let minDistance = Infinity;
+
+      for (const player of this.players.values()) {
+        if (player.state === PlayerState.DEAD) continue;
+        const dx = player.x - enemy.x;
+        const dy = player.y - enemy.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestPlayer = player;
+        }
+      }
+
+      if (nearestPlayer) {
+        // Update facing direction
+        const dx = nearestPlayer.x - enemy.x;
+        const dy = nearestPlayer.y - enemy.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > 0) {
+          enemy.facingDirection.x = dx / distance;
+          enemy.facingDirection.y = dy / distance;
+        }
+
+        // Move towards player
+        if (distance > 0) {
+          enemy.x += (dx / distance) * enemy.speed * this.deltaTime;
+          enemy.y += (dy / distance) * enemy.speed * this.deltaTime;
+        }
+
+        // Attack if close
+        if (distance < 50) { // attack range
+          nearestPlayer.health -= enemy.damage;
+          // if (nearestPlayer.health <= 0) {
+          //   nearestPlayer.state = PlayerState.DEAD;
+          //   // Game ends when a player dies
+          //   this.endGame();
+          // }
+        }
+      }
+    }
+  }
+
+  private updateCollectibles() {
+    for (const [collectibleId, collectible] of this.collectibles) {
+      // Check if any player is close enough to collect
+      for (const [playerId, player] of this.players) {
+        if (player.state === PlayerState.DEAD) continue;
+
+        const dx = player.x - collectible.x;
+        const dy = player.y - collectible.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < 30) { // collection range
+          // Apply collectible effect
+          this.applyCollectibleToPlayer(player, collectible);
+          // Remove collectible
+          this.collectibles.delete(collectibleId);
+          break; // Only one player can collect it
+        }
+      }
+    }
+  }
+
+  private applyCollectibleToPlayer(player: PlayerData, collectible: CollectibleData) {
+    switch (collectible.type) {
+      case CollectibleType.COIN:
+        player.score += collectible.value;
+        break;
+      case CollectibleType.HEALTH:
+        player.health = Math.min(player.maxHealth, player.health + collectible.value);
+        break;
+      // Add other types as needed
+    }
+  }
+
+  private spawnCollectible(x: number, y: number, type: CollectibleType, value: number = 1) {
+    const collectible: CollectibleData = {
+      id: `collectible_${this.nextCollectibleId++}`,
+      x,
+      y,
+      type,
+      value
+    };
+    this.collectibles.set(collectible.id, collectible);
+  }
+
   getGameState(): GameStateData {
     return {
       players: Array.from(this.players.values()),
-      enemies: [], // No enemies in simple multiplayer
-      collectibles: [], // No collectibles in simple multiplayer
+      enemies: Array.from(this.enemies.values()),
+      collectibles: Array.from(this.collectibles.values()),
       state: this.gameState,
       wave: 1, // Always wave 1
       gameTime: this.gameTime
