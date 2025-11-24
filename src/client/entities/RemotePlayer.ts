@@ -23,28 +23,36 @@ export class RemotePlayer extends Phaser.Physics.Matter.Sprite {
     // Idle animations
     this.scene.anims.create({
       key: 'remote-idle_down',
-      frames: this.anims.generateFrameNumbers(texture, { frames: [0, 1, 2, 3] }),
-      frameRate: 10,
-      repeat: -1
+      frames: this.anims.generateFrameNumbers('player_idle', { frames: [0, 1, 2, 3, 4, 5] }),
+      frameRate: 6,
+      repeat: -1,
     });
 
     this.scene.anims.create({
       key: 'remote-idle_up',
-      frames: this.anims.generateFrameNumbers(texture, { frames: [4, 5, 6, 7] }),
-      frameRate: 10,
-      repeat: -1
+      frames: this.anims.generateFrameNumbers('player_idle', { frames: [36, 37, 38, 39] }),
+      frameRate: 6,
+      repeat: -1,
     });
 
     this.scene.anims.create({
       key: 'remote-idle_left',
-      frames: this.anims.generateFrameNumbers(texture, { frames: [8, 9, 10, 11] }),
-      frameRate: 10,
-      repeat: -1
+      frames: this.anims.generateFrameNumbers('player_idle', { frames: [12, 13, 14, 15, 16] }),
+      frameRate: 6,
+      repeat: -1,
     });
 
     this.scene.anims.create({
       key: 'remote-idle_right',
-      frames: this.anims.generateFrameNumbers(texture, { frames: [12, 13, 14, 15] }),
+      frames: this.anims.generateFrameNumbers('player_idle', { frames: [24, 25, 26, 27, 28, 29] }),
+      frameRate: 6,
+      repeat: -1,
+    });
+
+
+    this.scene.anims.create({
+      key: 'remote-walk_down',
+      frames: this.scene.anims.generateFrameNumbers('player_walk', { frames: [0, 1, 2, 3, 4, 5, 6, 7] }),
       frameRate: 10,
       repeat: -1
     });
@@ -58,21 +66,21 @@ export class RemotePlayer extends Phaser.Physics.Matter.Sprite {
     });
 
     this.scene.anims.create({
-      key: 'remote-walk_up',
+      key: 'remote-walk_left',
       frames: this.anims.generateFrameNumbers('player_walk', { frames: [8, 9, 10, 11, 12, 13, 14, 15] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: 'remote-walk_left',
+      key: 'remote-walk_right',
       frames: this.anims.generateFrameNumbers('player_walk', { frames: [16, 17, 18, 19, 20, 21, 22, 23] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: 'remote-walk_right',
+      key: 'remote-walk_up',
       frames: this.anims.generateFrameNumbers('player_walk', { frames: [24, 25, 26, 27, 28, 29, 30, 31] }),
       frameRate: 10,
       repeat: -1
@@ -87,21 +95,21 @@ export class RemotePlayer extends Phaser.Physics.Matter.Sprite {
     });
 
     this.scene.anims.create({
-      key: 'remote-attack_up',
+      key: 'remote-attack_left',
       frames: this.anims.generateFrameNumbers('player_attack', { frames: [6, 7, 8, 9, 10, 11] }),
       frameRate: 10,
       repeat: 0
     });
 
     this.scene.anims.create({
-      key: 'remote-attack_left',
+      key: 'remote-attack_right',
       frames: this.anims.generateFrameNumbers('player_attack', { frames: [12, 13, 14, 15, 16, 17] }),
       frameRate: 10,
       repeat: 0
     });
 
     this.scene.anims.create({
-      key: 'remote-attack_right',
+      key: 'remote-attack_up',
       frames: this.anims.generateFrameNumbers('player_attack', { frames: [18, 19, 20, 21, 22, 23] }),
       frameRate: 10,
       repeat: 0
