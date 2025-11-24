@@ -5,7 +5,7 @@ import {
   COLLISION_CATEGORY_PLAYER,
   COLLISION_CATEGORY_ATTACK
 } from '../../shared/config/constants';
-import { EnemyConfig, EnemyType, EnemyState, CollectibleType } from '../../shared/types';
+import { EnemyConfig, EnemyType, CollectibleType } from '../../shared/types';
 import enemiesConfig from '../../shared/config/enemies.json';
 import { Collectible } from './Collectible';
 
@@ -21,6 +21,10 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
   protected lastAttackTime: number = 0;
   protected attackRange: number = 50;
   protected isAlive: boolean = true;
+
+  getIsAlive(): boolean {
+    return this.isAlive;
+  }
   protected dropCollectibleCallback?: (type: CollectibleType, texture: string, value: number, x: number, y: number) => void;
   protected facingDirection: { x: number; y: number } = { x: 1, y: 0 };
 
@@ -265,19 +269,6 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
     }
   }
 
-  getState(): EnemyState {
-    return {
-      id: this.id,
-      x: this.x,
-      y: this.y,
-      health: this.health,
-      maxHealth: this.maxHealth,
-      speed: this.speed,
-      damage: this.damage,
-      isAlive: this.isAlive,
-      type: this.id.toUpperCase() as EnemyType
-    };
-  }
 
   protected playDamageSound(): void {
     if (this.scene.sound.get('enemy_damage')) {

@@ -1,256 +1,203 @@
-import { Message, MessageType, PlayerState, EnemyState, GameState, RoomState, EnemyType, Collectible, CollectibleType } from '../shared/types/index';
+import { GameMessage, MessageType, PlayerData, GameState, GameStateData, PlayerInputPayload, JoinGamePayload, PlayerState } from '../shared/types/index';
 import { PLAYER_HEALTH, PLAYER_MAX_HEALTH, PLAYER_SPEED, PLAYER_DAMAGE, GAME_WIDTH, GAME_HEIGHT, UPDATE_RATE } from '../shared/config/constants';
 import { WebSocketServer } from './WebSocketServer';
 
 export class GameRoom {
-  public players: PlayerState[] = [];
-  public enemies: EnemyState[] = [];
-  public collectibles: Collectible[] = [];
-  public state: GameState = GameState.WAITING;
-  private maxPlayers = 4;
-  private wave = 1;
-  private deltaTime = 1 / UPDATE_RATE;
+  private players: Map<string, PlayerData> = new Map();
+  private gameState: GameState = GameState.WAITING;
+  private gameTime: number = 0;
+  private deltaTime: number = 1 / UPDATE_RATE;
+  private maxPlayers: number = 2; // Only 2 players for simple multiplayer
+  private wsServer: WebSocketServer;
 
-  constructor(private id: string, private wsServer: WebSocketServer) {}
-
-  canJoin(): boolean {
-    return this.players.length < this.maxPlayers && this.state === GameState.WAITING;
+  constructor(wsServer: WebSocketServer) {
+    this.wsServer = wsServer;
   }
 
-  addPlayer(playerId: string) {
-    const player: PlayerState = {
+  canJoin(): boolean {
+    return this.players.size < this.maxPlayers && this.gameState === GameState.WAITING;
+  }
+
+  addPlayer(playerId: string, playerName?: string): boolean {
+    if (!this.canJoin()) return false;
+
+    // Position players on opposite sides of the arena
+    const isFirstPlayer = this.players.size === 0;
+    const player: PlayerData = {
       id: playerId,
-      x: 100,
-      y: 100,
+      x: isFirstPlayer ? GAME_WIDTH * 0.25 : GAME_WIDTH * 0.75,
+      y: GAME_HEIGHT / 2,
       health: PLAYER_HEALTH,
       maxHealth: PLAYER_MAX_HEALTH,
       speed: PLAYER_SPEED,
       damage: PLAYER_DAMAGE,
-      isAlive: true,
+      state: PlayerState.ALIVE,
+      direction: { x: 0, y: 0 }, // Current movement direction
+      facingDirection: { x: 1, y: 0 }, // Facing direction for animation
       lastAttackTime: 0,
+      score: 0,
+      isAttacking: false,
+      attackEndTime: 0,
+      currentState: 'idle'
     };
-    this.players.push(player);
-    if (this.players.length >= 2 && this.state === GameState.WAITING) {
+    console.log(player.id, player.speed, player.direction, player.facingDirection, player.isAttacking);
+    this.players.set(playerId, player);
+
+    // Notify the joining player specifically
+    this.wsServer.sendToPlayer(playerId, {
+      type: MessageType.YOU_JOINED,
+      data: { playerId, player }
+    });
+
+    // Notify other players that someone joined
+    this.wsServer.notifyPlayerJoined(playerId, player);
+
+    // Start game if we have 2 players
+    if (this.players.size >= 2 && this.gameState === GameState.WAITING) {
       this.startGame();
     }
+
+    return true;
   }
 
   removePlayer(playerId: string) {
-    this.players = this.players.filter(p => p.id !== playerId);
-    if (this.players.length < 2 && this.state === GameState.PLAYING) {
-      this.state = GameState.FINISHED;
+    this.players.delete(playerId);
+    this.wsServer.notifyPlayerLeft(playerId);
+
+    // End game if a player disconnects
+    if (this.gameState === GameState.PLAYING) {
+      this.endGame();
     }
   }
 
-  isEmpty(): boolean {
-    return this.players.length === 0;
-  }
-
-  handleMessage(playerId: string, message: Message) {
+  handleMessage(playerId: string, message: GameMessage) {
     switch (message.type) {
-      case MessageType.INPUT:
-        // Update player based on input
-        const player = this.players.find(p => p.id === playerId);
-        if (player && message.data) {
-          const input = message.data;
-          if (input.direction) {
-            player.x += input.direction.x * player.speed * this.deltaTime;
-            player.y += input.direction.y * player.speed * this.deltaTime;
-          }
-          if (input.action === 'attack') {
-            const now = Date.now();
-            if (now - player.lastAttackTime > 500) { // 500ms cooldown
-              player.lastAttackTime = now;
-              this.handlePlayerAttack(player);
-            }
-          }
-        }
-        // Don't broadcast here, let update() handle it
+      case MessageType.JOIN_GAME:
+        this.handleJoinGame(playerId, message.data as JoinGamePayload);
+        break;
+      case MessageType.LEAVE_GAME:
+        this.removePlayer(playerId);
+        break;
+      case MessageType.PLAYER_INPUT:
+        this.handlePlayerInput(playerId, message.data as PlayerInputPayload);
         break;
     }
   }
 
-  private startGame() {
-    this.state = GameState.STARTING;
-    // Broadcast starting
-    this.broadcastState();
-    setTimeout(() => {
-      this.state = GameState.PLAYING;
-      // Spawn initial wave
-      this.spawnWave();
-      this.broadcastState();
-    }, 3000);
+  private handleJoinGame(playerId: string, data: JoinGamePayload) {
+    this.addPlayer(playerId, data.playerName);
   }
 
-  private broadcastState() {
-    const roomState: RoomState = {
-      id: this.id,
-      players: this.players,
-      enemies: this.enemies,
-      collectibles: this.collectibles,
-      state: this.state,
-      wave: this.wave,
-    };
-    this.wsServer.broadcastToRoom(this.id, { type: MessageType.STATE_UPDATE, data: roomState });
-  }
+  private handlePlayerInput(playerId: string, input: PlayerInputPayload) {
+    const player = this.players.get(playerId);
+    if (!player || player.state === PlayerState.DEAD) return;
 
-  update() {
-    if (this.state !== GameState.PLAYING) return;
+    // Update player direction
+    player.direction = input.direction;
 
-    this.updateEnemies();
-    this.checkCollisions();
-    this.updateWave();
-    this.broadcastState();
-  }
-
-  private updateEnemies() {
-    for (const enemy of this.enemies) {
-      if (!enemy.isAlive) continue;
-
-      // Simple chase AI: move towards nearest player
-      const nearestPlayer = this.getNearestPlayer(enemy);
-      if (nearestPlayer) {
-        const dx = nearestPlayer.x - enemy.x;
-        const dy = nearestPlayer.y - enemy.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance > 0) {
-          enemy.x += (dx / distance) * enemy.speed * this.deltaTime;
-          enemy.y += (dy / distance) * enemy.speed * this.deltaTime;
-        }
-
-        // Attack if close
-        if (distance < 50) { // attack range
-          nearestPlayer.health -= enemy.damage * this.deltaTime; // damage over time
-          if (nearestPlayer.health <= 0) {
-            nearestPlayer.isAlive = false;
-          }
-        }
+    // Update player direction and position
+    if (input.direction) {
+      // Update facing direction if there's actual input (not {0,0})
+      if (input.direction.x !== 0 || input.direction.y !== 0) {
+        player.facingDirection = input.direction;
       }
-    }
-  }
 
-  private getNearestPlayer(enemy: EnemyState): PlayerState | null {
-    let nearest: PlayerState | null = null;
-    let minDist = Infinity;
-    for (const player of this.players) {
-      if (!player.isAlive) continue;
-      const dist = Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2);
-      if (dist < minDist) {
-        minDist = dist;
-        nearest = player;
-      }
-    }
-    return nearest;
-  }
+      // Movement is based on input direction
+      player.x += input.direction.x * player.speed * this.deltaTime;
+      player.y += input.direction.y * player.speed * this.deltaTime;
 
-  private handlePlayerAttack(player: PlayerState) {
-    for (const enemy of this.enemies) {
-      if (!enemy.isAlive) continue;
-      const dist = Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2);
-      if (dist < 50) { // attack range
-        enemy.health -= player.damage;
-        if (enemy.health <= 0) {
-          enemy.isAlive = false;
-          this.spawnCollectible(enemy.x, enemy.y);
-        }
-      }
-    }
-  }
-
-  private spawnCollectible(x: number, y: number) {
-    const types = [CollectibleType.HEALTH, CollectibleType.COIN, CollectibleType.DAMAGE_BOOST, CollectibleType.SPEED_BOOST];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const value = type === CollectibleType.HEALTH ? 20 : type === CollectibleType.COIN ? 10 : 5;
-    const collectible: Collectible = {
-      id: `collectible_${this.id}_${Date.now()}`,
-      x,
-      y,
-      type,
-      value
-    };
-    this.collectibles.push(collectible);
-  }
-
-  private checkCollisions() {
-    // Player-boundary
-    for (const player of this.players) {
+      // Keep player in bounds
       player.x = Math.max(0, Math.min(GAME_WIDTH, player.x));
       player.y = Math.max(0, Math.min(GAME_HEIGHT, player.y));
     }
 
-    // Player-enemy collision (damage)
-    for (const player of this.players) {
-      if (!player.isAlive) continue;
-      for (const enemy of this.enemies) {
-        if (!enemy.isAlive) continue;
-        const dist = Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2);
-        if (dist < 32) { // collision radius
-          player.health -= enemy.damage * this.deltaTime;
-          if (player.health <= 0) {
-            player.isAlive = false;
-          }
+    // Determine current state
+    if (input.action === 'attack') {
+      const now = Date.now();
+      if (now - player.lastAttackTime > 500) { // 500ms cooldown
+        player.lastAttackTime = now;
+        this.handlePlayerAttack(player);
+        player.currentState = 'attacking';
+      }
+    } else if (input.direction.x !== 0 || input.direction.y !== 0) {
+      player.currentState = 'walking';
+    } else {
+      player.currentState = 'idle';
+    }
+  }
+
+  private handlePlayerAttack(player: PlayerData) {
+    const now = Date.now();
+    player.isAttacking = true;
+    player.attackEndTime = now + 300; // 300ms attack duration
+
+    // Check for hits on other players
+    for (const [otherPlayerId, otherPlayer] of this.players) {
+      if (otherPlayerId === player.id || otherPlayer.state === PlayerState.DEAD) continue;
+
+      const dx = otherPlayer.x - player.x;
+      const dy = otherPlayer.y - player.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < 50) { // attack range
+        otherPlayer.health -= player.damage;
+        if (otherPlayer.health <= 0) {
+          otherPlayer.state = PlayerState.DEAD;
+          // Game ends when a player dies
+          this.endGame();
         }
       }
     }
+  }
 
-    // Player-collectible
-    for (const player of this.players) {
-      if (!player.isAlive) continue;
-      for (let i = this.collectibles.length - 1; i >= 0; i--) {
-        const collectible = this.collectibles[i];
-        const dist = Math.sqrt((player.x - collectible.x) ** 2 + (player.y - collectible.y) ** 2);
-        if (dist < 32) {
-          this.applyCollectible(player, collectible);
-          this.collectibles.splice(i, 1);
+  private startGame() {
+    this.gameState = GameState.PLAYING;
+    this.gameTime = 0;
+    this.wsServer.notifyGameStart();
+  }
+
+  private endGame() {
+    this.gameState = GameState.FINISHED;
+    this.wsServer.notifyGameEnd();
+  }
+
+  update() {
+    if (this.gameState !== GameState.PLAYING) return;
+
+    this.gameTime += this.deltaTime;
+    this.updatePlayers();
+  }
+
+  private updatePlayers() {
+    const now = Date.now();
+    for (const [playerId, player] of this.players) {
+      if (player.isAttacking && now > player.attackEndTime) {
+        player.isAttacking = false;
+        // Reset to walking or idle based on current direction
+        if (player.direction.x !== 0 || player.direction.y !== 0) {
+          player.currentState = 'walking';
+        } else {
+          player.currentState = 'idle';
         }
       }
     }
   }
 
-  private applyCollectible(player: PlayerState, collectible: Collectible) {
-    switch (collectible.type) {
-      case CollectibleType.HEALTH:
-        player.health = Math.min(player.maxHealth, player.health + collectible.value);
-        break;
-      case CollectibleType.COIN:
-        // Maybe add score, but not implemented
-        break;
-      case CollectibleType.SHIELD:
-        // Temporary shield, not implemented
-        break;
-      case CollectibleType.DAMAGE_BOOST:
-        player.damage += collectible.value;
-        break;
-      case CollectibleType.SPEED_BOOST:
-        player.speed += collectible.value;
-        break;
-    }
+  getGameState(): GameStateData {
+    return {
+      players: Array.from(this.players.values()),
+      enemies: [], // No enemies in simple multiplayer
+      collectibles: [], // No collectibles in simple multiplayer
+      state: this.gameState,
+      wave: 1, // Always wave 1
+      gameTime: this.gameTime
+    };
   }
 
-  private updateWave() {
-    const aliveEnemies = this.enemies.filter(e => e.isAlive).length;
-    if (aliveEnemies === 0) {
-      this.wave++;
-      this.spawnWave();
-    }
-  }
-
-  private spawnWave() {
-    const enemyCount = 5 + this.wave * 2; // increase per wave
-    for (let i = 0; i < enemyCount; i++) {
-      const type = this.wave > 3 ? EnemyType.ORC : this.wave > 1 ? EnemyType.GOBLIN : EnemyType.SLIME;
-      const enemy: EnemyState = {
-        id: `enemy_${this.id}_${this.wave}_${i}`,
-        x: Math.random() * GAME_WIDTH,
-        y: Math.random() * GAME_HEIGHT,
-        health: 50 + this.wave * 10,
-        maxHealth: 50 + this.wave * 10,
-        speed: 50 + this.wave * 5,
-        damage: 10 + this.wave * 2,
-        isAlive: true,
-        type,
-      };
-      this.enemies.push(enemy);
-    }
+  getFinalScores(): { playerId: string; score: number }[] {
+    return Array.from(this.players.values()).map(player => ({
+      playerId: player.id,
+      score: player.state === PlayerState.ALIVE ? 1 : 0 // 1 point for surviving
+    }));
   }
 }

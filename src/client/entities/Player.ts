@@ -13,7 +13,7 @@ import {
   COLLISION_CATEGORY_ATTACK,
   COLLISION_CATEGORY_COLLECTIBLE
 } from '../../shared/config/constants';
-import { PlayerState, PlayerStateEnum, UpgradeType, PlayerUpgrades } from '../../shared/types';
+import { PlayerStateEnum, UpgradeType, PlayerUpgrades } from '../../shared/types';
 
 export class Player extends Phaser.Physics.Matter.Sprite {
   public id: string;
@@ -424,20 +424,6 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     return { ...this.upgrades };
   }
 
-  getState(): PlayerState {
-    return {
-      id: this.id || 'player',
-      x: this.x,
-      y: this.y,
-      health: this.health,
-      maxHealth: this.maxHealth,
-      speed: this.speed,
-      damage: this.damage,
-      isAlive: this.state !== PlayerStateEnum.DEAD,
-      lastAttackTime: this.lastAttackTime,
-      direction: this.facingDirection
-    };
-  }
 
   getBuffTimers(): { invulnerable: number; damageBoost: number; speedBoost: number } {
     return {
@@ -445,5 +431,23 @@ export class Player extends Phaser.Physics.Matter.Sprite {
       damageBoost: Math.max(0, this.damageBoostTimer / 1000),
       speedBoost: Math.max(0, this.speedBoostTimer / 1000)
     };
+  }
+
+  // Public method for multiplayer attack handling
+  canAttack(): boolean {
+    return this.scene.time.now - this.lastAttackTime > this.attackCooldown;
+  }
+
+  performAttack(): void {
+    this.lastAttackTime = this.scene.time.now;
+    this.attack();
+  }
+
+  getLastAttackTime(): number {
+    return this.lastAttackTime;
+  }
+
+  setLastAttackTime(time: number): void {
+    this.lastAttackTime = time;
   }
 }

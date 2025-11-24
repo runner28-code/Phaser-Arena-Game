@@ -94,7 +94,7 @@ export class SpawnManager {
       // Filter out dead enemies and release them back to pool
       const aliveEnemies: Enemy[] = [];
       this.activeEnemies.forEach(enemy => {
-        if (enemy.getState().isAlive) {
+        if (enemy.getIsAlive()) {
           aliveEnemies.push(enemy);
           // Update enemy AI
           enemy.update(delta);

@@ -5,7 +5,6 @@ import { GameOverSceneData } from '../../shared/types';
 export class GameOverScene extends Phaser.Scene {
   private score!: number;
   private gameTime!: number;
-  private mode!: 'single' | 'multi';
 
   constructor() {
     super({ key: 'GameOver' });
@@ -14,7 +13,6 @@ export class GameOverScene extends Phaser.Scene {
   init(data: GameOverSceneData) {
     this.score = data.score;
     this.gameTime = data.time;
-    this.mode = data.mode;
   }
 
   create() {
@@ -33,12 +31,6 @@ export class GameOverScene extends Phaser.Scene {
     // Display time
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, `Time: ${this.gameTime.toFixed(1)}s`, {
       fontSize: '32px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
-    // Display mode
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50, `Mode: ${this.mode}`, {
-      fontSize: '24px',
       color: '#ffffff'
     }).setOrigin(0.5);
 

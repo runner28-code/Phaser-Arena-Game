@@ -1,177 +1,204 @@
+// ===== SHARED TYPES FOR MULTIPLAYER GAME =====
+
+// Message types for client-server communication
 export enum MessageType {
-  JOIN = 'JOIN',
-  CREATE_ROOM = 'CREATE_ROOM',
-  JOIN_ROOM = 'JOIN_ROOM',
-  INPUT = 'INPUT',
-  STATE_UPDATE = 'STATE_UPDATE',
-  ROOM_JOINED = 'ROOM_JOINED',
-  PLAYER_JOINED = 'PLAYER_JOINED',
-  PLAYER_LEFT = 'PLAYER_LEFT',
+   // Lobby messages
+   JOIN_GAME = 'JOIN_GAME',
+   LEAVE_GAME = 'LEAVE_GAME',
+
+   // Game messages
+   PLAYER_INPUT = 'PLAYER_INPUT',
+   GAME_STATE_UPDATE = 'GAME_STATE_UPDATE',
+   PLAYER_JOINED = 'PLAYER_JOINED',
+   PLAYER_LEFT = 'PLAYER_LEFT',
+   YOU_JOINED = 'YOU_JOINED',
+   GAME_START = 'GAME_START',
+   GAME_END = 'GAME_END',
 }
 
+// Game state enums
 export enum GameState {
-  WAITING = 'WAITING',
-  STARTING = 'STARTING',
-  PLAYING = 'PLAYING',
-  FINISHED = 'FINISHED',
+   WAITING = 'WAITING',
+   PLAYING = 'PLAYING',
+   FINISHED = 'FINISHED',
 }
 
-export enum EnemyType {
-  SLIME = 'SLIME',
-  GOBLIN = 'GOBLIN',
-  ORC = 'ORC',
+export enum PlayerState {
+   ALIVE = 'ALIVE',
+   DEAD = 'DEAD',
 }
 
-export enum CollectibleType {
-  HEALTH = 'health',
-  COIN = 'coin',
-  SHIELD = 'shield',
-  DAMAGE_BOOST = 'damage_boost',
-  SPEED_BOOST = 'speed_boost',
+// ===== DATA STRUCTURES =====
+
+// Player data
+export interface PlayerData {
+     id: string;
+     x: number;
+     y: number;
+     health: number;
+     maxHealth: number;
+     speed: number;
+     damage: number;
+     state: PlayerState;
+     direction: { x: number; y: number };
+     facingDirection: { x: number; y: number };
+     lastAttackTime: number;
+     score: number;
+     isAttacking: boolean;
+     attackEndTime: number;
+     currentState: 'idle' | 'walking' | 'attacking';
 }
 
-export enum UpgradeType {
-  DAMAGE = 'DAMAGE',
-  SPEED = 'SPEED',
-  HEALTH = 'HEALTH',
+// Enemy data
+export interface EnemyData {
+   id: string;
+   x: number;
+   y: number;
+   health: number;
+   maxHealth: number;
+   speed: number;
+   damage: number;
+   type: EnemyType;
+   isAlive: boolean;
 }
 
-export interface UpgradeOption {
-  type: UpgradeType;
-  name: string;
-  description: string;
-  icon: string;
+// Collectible data
+export interface CollectibleData {
+   id: string;
+   x: number;
+   y: number;
+   type: CollectibleType;
+   value: number;
 }
 
-export interface PlayerUpgrades {
-  damageLevel: number;
-  speedLevel: number;
-  healthLevel: number;
+// Complete game state
+export interface GameStateData {
+   players: PlayerData[];
+   enemies: EnemyData[];
+   collectibles: CollectibleData[];
+   state: GameState;
+   wave: number;
+   gameTime: number;
 }
 
-export enum PlayerStateEnum {
-  IDLE = 'IDLE',
-  WALKING = 'WALKING',
-  ATTACKING = 'ATTACKING',
-  DEAD = 'DEAD',
+// ===== MESSAGE PAYLOADS =====
+
+// Client to server messages
+export interface JoinGamePayload {
+   playerName?: string;
 }
 
-export interface PlayerState {
-  id: string;
-  x: number;
-  y: number;
-  health: number;
-  maxHealth: number;
-  speed: number;
-  damage: number;
-  isAlive: boolean;
-  lastAttackTime: number;
-  direction: { x: number; y: number };
+export interface PlayerInputPayload {
+   direction: { x: number; y: number };
+   action?: 'attack';
 }
 
-export interface EnemyState {
-  id: string;
-  x: number;
-  y: number;
-  health: number;
-  maxHealth: number;
-  speed: number;
-  damage: number;
-  isAlive: boolean;
-  type: EnemyType;
+// Server to client messages
+export interface GameStateUpdatePayload {
+   gameState: GameStateData;
+   timestamp: number;
 }
 
-export interface EnemyConfig {
-  id: string;
-  name: string;
-  health: number;
-  speed: number;
-  damage: number;
-  animations: {
-    idle: string;
-    walk: string;
-    attack: string;
-    death: string;
-  };
-}
-
-export interface Message {
-  type: MessageType;
-  data: any;
-}
-
-// Message payload interfaces
-export interface JoinPayload {
-  playerName: string;
-}
-
-export interface CreateRoomPayload {
-  roomName: string;
-}
-
-export interface JoinRoomPayload {
-  roomId: string;
-}
-
-export interface RoomJoinedPayload {
-  roomId: string;
-  playerId: string;
+export interface YouJoinedPayload {
+   playerId: string;
+   player: PlayerData;
 }
 
 export interface PlayerJoinedPayload {
-  playerId: string;
-  playerName: string;
+   player: PlayerData;
 }
 
 export interface PlayerLeftPayload {
-  playerId: string;
+   playerId: string;
 }
 
-export interface StateUpdatePayload {
-  roomState: RoomState;
+export interface GameStartPayload {
+   gameState: GameStateData;
 }
 
-// MessagePack serialized message interface
-export interface SerializedMessage {
-  type: MessageType;
-  data: Buffer;
+export interface GameEndPayload {
+   winner?: string;
+   finalScores: { playerId: string; score: number }[];
 }
 
-export interface RoomState {
-  id: string;
-  players: PlayerState[];
-  enemies: EnemyState[];
-  collectibles: Collectible[];
-  state: GameState;
-  wave: number;
+// Generic message structure
+export interface GameMessage {
+   type: MessageType;
+   data: any;
+   timestamp?: number;
+}
+
+// ===== SINGLE PLAYER TYPES =====
+
+export enum UpgradeType {
+    DAMAGE = 'DAMAGE',
+    SPEED = 'SPEED',
+    HEALTH = 'HEALTH',
+}
+
+export interface UpgradeOption {
+    type: UpgradeType;
+    name: string;
+    description: string;
+    icon: string;
+}
+
+export interface PlayerUpgrades {
+    damageLevel: number;
+    speedLevel: number;
+    healthLevel: number;
+}
+
+export enum PlayerStateEnum {
+    IDLE = 'IDLE',
+    WALKING = 'WALKING',
+    ATTACKING = 'ATTACKING',
+    DEAD = 'DEAD',
+}
+
+export enum EnemyType {
+    SLIME = 'SLIME',
+    GOBLIN = 'GOBLIN',
+    ORC = 'ORC',
+}
+
+export enum CollectibleType {
+    HEALTH = 'health',
+    COIN = 'coin',
+    SHIELD = 'shield',
+    DAMAGE_BOOST = 'damage_boost',
+    SPEED_BOOST = 'speed_boost',
+}
+
+export interface EnemyConfig {
+    id: string;
+    name: string;
+    health: number;
+    speed: number;
+    damage: number;
+    animations: {
+      idle: string;
+      walk: string;
+      attack: string;
+      death: string;
+    };
 }
 
 export interface Collectible {
-  id: string;
-  x: number;
-  y: number;
-  type: CollectibleType;
-  value: number;
-}
-
-export interface InputMessage {
-  playerId: string;
-  direction: { x: number; y: number };
-  action?: string;
+    id: string;
+    x: number;
+    y: number;
+    type: CollectibleType;
+    value: number;
 }
 
 // Scene data interfaces
-export interface GameSceneData {
-  mode: 'single' | 'multi';
-}
-
 export interface GameOverSceneData {
-  score: number;
-  time: number;
-  mode: 'single' | 'multi';
+   score: number;
+   time: number;
 }
 
 export interface UpgradeSceneData {
-  upgrades: UpgradeOption[];
-  onSelect: (upgrade: UpgradeType) => void;
+   upgrades: UpgradeOption[];
+   onSelect: (upgrade: UpgradeType) => void;
 }

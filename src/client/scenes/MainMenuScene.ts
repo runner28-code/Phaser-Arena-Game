@@ -18,7 +18,7 @@ export class MainMenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Single Player button
-    const singlePlayerButton = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Single Player', {
+    const singlePlayerButton = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, 'Single Player', {
       fontSize: '32px',
       color: '#ffffff'
     }).setOrigin(0.5).setInteractive().setName('singlePlayerButton');
@@ -28,7 +28,7 @@ export class MainMenuScene extends Phaser.Scene {
     });
 
     // Multiplayer button
-    const multiplayerButton = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100, 'Multiplayer', {
+    const multiplayerButton = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50, 'Multiplayer', {
       fontSize: '32px',
       color: '#ffffff'
     }).setOrigin(0.5).setInteractive().setName('multiplayerButton');
@@ -38,7 +38,7 @@ export class MainMenuScene extends Phaser.Scene {
     });
 
     // Settings button
-    this.settingsButton = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 200, 'Settings', {
+    this.settingsButton = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 150, 'Settings', {
       fontSize: '24px',
       color: '#ffffff'
     }).setOrigin(0.5).setInteractive().setName('settingsButton');

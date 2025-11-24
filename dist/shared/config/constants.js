@@ -1,0 +1,21 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.COLLISION_CATEGORY_OBSTACLE = exports.COLLISION_CATEGORY_COLLECTIBLE = exports.COLLISION_CATEGORY_ATTACK = exports.COLLISION_CATEGORY_ENEMY = exports.COLLISION_CATEGORY_PLAYER = exports.ENEMY_SPEED_BASE = exports.ATTACK_COOLDOWN = exports.PLAYER_DAMAGE = exports.PLAYER_MAX_HEALTH = exports.PLAYER_HEALTH = exports.PLAYER_SPEED = exports.TILE_SIZE = exports.INPUT_RATE = exports.UPDATE_RATE = exports.SERVER_PORT = exports.GAME_HEIGHT = exports.GAME_WIDTH = void 0;
+exports.GAME_WIDTH = 800;
+exports.GAME_HEIGHT = 600;
+exports.SERVER_PORT = 8080;
+exports.UPDATE_RATE = 20;
+exports.INPUT_RATE = 60;
+exports.TILE_SIZE = 32;
+exports.PLAYER_SPEED = 50;
+exports.PLAYER_HEALTH = 100;
+exports.PLAYER_MAX_HEALTH = 100;
+exports.PLAYER_DAMAGE = 100;
+exports.ATTACK_COOLDOWN = 50;
+exports.ENEMY_SPEED_BASE = 50;
+// Matter.js collision categories
+exports.COLLISION_CATEGORY_PLAYER = 0x0001;
+exports.COLLISION_CATEGORY_ENEMY = 0x0002;
+exports.COLLISION_CATEGORY_ATTACK = 0x0004;
+exports.COLLISION_CATEGORY_COLLECTIBLE = 0x0008;
+exports.COLLISION_CATEGORY_OBSTACLE = 0x0010;

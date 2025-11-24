@@ -5,21 +5,20 @@ import { RemotePlayer } from '../entities/RemotePlayer';
 import { Enemy } from '../entities/Enemy';
 import { Collectible } from '../entities/Collectible';
 import { SpawnManager } from '../systems/SpawnManager';
+import { ObjectPool } from '../systems/ObjectPool';
 import { NetworkManager } from '../network/NetworkManager';
 import { UpgradeScene } from './UpgradeScene';
-import { ObjectPool } from '../systems/ObjectPool';
-import { GameOverSceneData, PlayerStateEnum, RoomState, EnemyState, Collectible as CollectibleType, GameState, UpgradeType, CollectibleType as CollectibleEnum } from '../../shared/types';
+import { GameOverSceneData, PlayerStateEnum, UpgradeType, CollectibleType as CollectibleEnum, GameStateData, PlayerData, GameState, MessageType, PlayerState } from '../../shared/types';
 
 export class GameScene extends Phaser.Scene {
-    private mode!: 'single' | 'multi';
+    private mode: 'single' | 'multi' = 'single';
     private player!: Player;
     private networkManager?: NetworkManager;
     private remotePlayers: Map<string, RemotePlayer> = new Map();
-    private activeEnemies: Map<string, any> = new Map(); // For multiplayer enemy syncing
-    private activeCollectibles: Map<string, any> = new Map(); // For multiplayer collectible syncing
-    private spawnManager!: SpawnManager;
+    private spawnManager?: SpawnManager; // Only used in single player
     private waveText!: Phaser.GameObjects.Text;
     private buffTexts: Phaser.GameObjects.Text[] = [];
+    private upgradeTexts: Phaser.GameObjects.Text[] = [];
     private gameTimer: number = 0;
     private uiContainer!: Phaser.GameObjects.Container;
     private healthBarBackground!: Phaser.GameObjects.Graphics;
@@ -27,11 +26,10 @@ export class GameScene extends Phaser.Scene {
     private currentHealthBarWidth: number = 200;
     private scoreText!: Phaser.GameObjects.Text;
     private timerText!: Phaser.GameObjects.Text;
-    private waitingText!: Phaser.GameObjects.Text;
     private playerCountText!: Phaser.GameObjects.Text;
-    private upgradeTexts: Phaser.GameObjects.Text[] = [];
+    private waitingText!: Phaser.GameObjects.Text;
 
-    // Object pools for performance optimization
+    // Object pools for single-player performance optimization
     private enemyPool!: ObjectPool<Enemy>;
     private collectiblePool!: ObjectPool<Collectible>;
     private projectilePool: MatterJS.BodyType[] = []; // Pool for projectile bodies
@@ -40,8 +38,8 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'Game' });
   }
 
-  init(data: { mode: 'single' | 'multi' }) {
-    this.mode = data.mode;
+  init(data: { mode?: 'single' | 'multi' }) {
+    this.mode = data.mode || 'single';
   }
 
   create() {
@@ -51,11 +49,14 @@ export class GameScene extends Phaser.Scene {
     // Create static boundary bodies
     this.createBoundaries();
 
-    // Initialize object pools
-    this.initializePools();
-
     // Set up collision event listeners
     this.setupCollisionListeners();
+
+    // Initialize object pools (needed for both modes)
+    this.initializePools();
+
+    // Create UI container (needed before mode-specific initialization)
+    this.uiContainer = this.add.container(0, 0);
 
     // Create player at center
     this.player = new Player(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'player_idle');
@@ -64,37 +65,27 @@ export class GameScene extends Phaser.Scene {
       // Initialize network manager for multiplayer
       this.networkManager = new NetworkManager('ws://localhost:8080');
       this.networkManager.connect().then(() => {
-        console.log('Connected to server');
-        // Set up message handlers
+        console.log('Connected to multiplayer server');
         this.setupNetworkHandlers();
-        // Send create room (for now, assuming host creates room)
-        this.networkManager!.sendCreateRoom('Multiplayer Room');
+        this.networkManager!.joinGame();
       }).catch((error) => {
         console.error('Failed to connect to server:', error);
+        // Fallback to single player
+        this.mode = 'single';
+        this.initializeSinglePlayer();
       });
-
-      // Create spawn manager for local enemies (for testing)
-      this.spawnManager = new SpawnManager(this, this.player, this.enemyPool, () => this.showUpgradeSelection());
-      this.spawnManager.startWave();
     } else {
-      // Single player mode
-      // Create spawn manager with level up callback
-      this.spawnManager = new SpawnManager(this, this.player, this.enemyPool, () => this.showUpgradeSelection());
-      // Start first wave
-      this.spawnManager.startWave();
+      this.initializeSinglePlayer();
     }
 
-    // Create UI container
-    this.uiContainer = this.add.container(0, 0);
-
-    // Create waiting text
+    // Create waiting text (for multiplayer)
     this.waitingText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
       fontSize: '32px',
       color: '#ffffff'
     }).setOrigin(0.5);
     this.uiContainer.add(this.waitingText);
 
-    // Create player count text
+    // Create player count text (for multiplayer)
     this.playerCountText = this.add.text(10, 70, 'Players: 1', {
       fontSize: '24px',
       color: '#ffffff'
@@ -118,24 +109,15 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
     this.uiContainer.add(this.timerText);
 
-    // Add existing UI text
+    // Add mode text
     const modeText = this.add.text(10, 10, `Mode: ${this.mode}`, {
       fontSize: '24px',
       color: '#ffffff'
     });
     this.uiContainer.add(modeText);
 
-    this.waveText = this.add.text(10, 40, `Wave: 1`, {
-      fontSize: '24px',
-      color: '#ffffff'
-    });
-    this.uiContainer.add(this.waveText);
-
     // Start background music
     this.startBackgroundMusic();
-
-    // Initialize upgrade UI
-    this.updateUpgradeUI();
   }
 
   private createBoundaries(): void {
@@ -161,93 +143,6 @@ export class GameScene extends Phaser.Scene {
     this.matter.add.rectangle(GAME_WIDTH + 10, GAME_HEIGHT / 2, 20, GAME_HEIGHT, {
       isStatic: true,
       collisionFilter: { category: COLLISION_CATEGORY_OBSTACLE }
-    });
-  }
-
-  private initializePools(): void {
-    // Enemy pool
-    this.enemyPool = new ObjectPool<Enemy>(
-      (type: string, x: number, y: number) => {
-        const enemy = Enemy.createEnemy(type, this, x, y);
-        if (enemy) {
-          enemy.setActive(false);
-          enemy.setVisible(false);
-        }
-        return enemy!;
-      },
-      (enemy: Enemy) => {
-        enemy.reset();
-      },
-      20, // initial size
-      100 // max size
-    );
-
-    // Collectible pool
-    this.collectiblePool = new ObjectPool<Collectible>(
-      (texture: string, type: CollectibleEnum, value: number, x: number, y: number) => {
-        const collectible = new Collectible(this, x, y, texture, type, value);
-        return collectible;
-      },
-      (collectible: Collectible) => {
-        collectible.reset();
-      },
-      10, // initial size
-      50 // max size
-    );
-
-    // Pre-populate projectile pool
-    for (let i = 0; i < 20; i++) {
-      const projectile = this.matter.add.circle(0, 0, 8, { isSensor: true });
-      projectile.collisionFilter = { category: COLLISION_CATEGORY_ATTACK, mask: COLLISION_CATEGORY_PLAYER, group: 0 };
-      this.matter.world.remove(projectile); // Remove from world initially
-      this.projectilePool.push(projectile);
-    }
-  }
-
-  public getProjectile(x: number, y: number, mask: number): MatterJS.BodyType | null {
-    let projectile = this.projectilePool.pop();
-    if (!projectile) {
-      projectile = this.matter.add.circle(x, y, 8, { isSensor: true });
-      projectile.collisionFilter = { category: COLLISION_CATEGORY_ATTACK, mask: mask, group: 0 };
-    } else {
-      // Reset position
-      projectile.position.x = x;
-      projectile.position.y = y;
-      projectile.velocity.x = 0;
-      projectile.velocity.y = 0;
-      projectile.collisionFilter = { category: COLLISION_CATEGORY_ATTACK, mask: mask, group: 0 };
-      this.matter.world.add(projectile); // Add back to world
-    }
-    return projectile;
-  }
-
-  public releaseProjectile(projectile: MatterJS.BodyType): void {
-    this.matter.world.remove(projectile);
-    if (this.projectilePool.length < 50) { // Max pool size
-      this.projectilePool.push(projectile);
-    }
-  }
-
-  private setupNetworkHandlers(): void {
-    if (!this.networkManager) return;
-
-    this.networkManager.onRoomJoined((data) => {
-      console.log('Joined room:', data.roomId);
-      this.player.id = data.playerId;
-      // Start input loop
-      this.networkManager!.startInputLoop();
-    });
-
-    this.networkManager.onStateUpdate((data) => {
-      // State updates will be handled in update()
-    });
-
-    this.networkManager.onPlayerJoined((data) => {
-      console.log('Player joined:', data.playerId);
-    });
-
-    this.networkManager.onPlayerLeft((data) => {
-      console.log('Player left:', data.playerId);
     });
   }
 
@@ -299,13 +194,13 @@ export class GameScene extends Phaser.Scene {
       event.pairs.forEach((pair: any) => {
         const { bodyA, bodyB } = pair;
 
-        // Player vs Enemy collision
+        // Player vs obstacle collision (walls)
         if ((bodyA.gameObject === this.player && bodyB.collisionFilter.category === COLLISION_CATEGORY_OBSTACLE) ||
             (bodyB.gameObject === this.player && bodyA.collisionFilter.category === COLLISION_CATEGORY_OBSTACLE)) {
           // Player hit obstacle - movement already prevented by physics
         }
 
-        // Player vs Enemy collision
+        // Player vs Enemy collision (single-player only)
         if ((bodyA.gameObject === this.player && bodyB.collisionFilter.category === COLLISION_CATEGORY_ENEMY) ||
             (bodyB.gameObject === this.player && bodyA.collisionFilter.category === COLLISION_CATEGORY_ENEMY)) {
           const enemyBody = bodyA.gameObject === this.player ? bodyB : bodyA;
@@ -315,7 +210,7 @@ export class GameScene extends Phaser.Scene {
           }
         }
 
-        // Player vs Collectible collision
+        // Player vs Collectible collision (single-player only)
         if ((bodyA.gameObject === this.player && bodyB.collisionFilter.category === COLLISION_CATEGORY_COLLECTIBLE) ||
             (bodyB.gameObject === this.player && bodyA.collisionFilter.category === COLLISION_CATEGORY_COLLECTIBLE)) {
           const collectibleBody = bodyA.gameObject === this.player ? bodyB : bodyA;
@@ -340,158 +235,85 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private updateSinglePlayer(delta: number) {
-    // Check for player death
-    if (this.player.state === PlayerStateEnum.DEAD) {
-      const gameOverData: GameOverSceneData = {
-        score: this.player.score,
-        time: this.gameTimer / 1000,
-        mode: this.mode
-      };
-      this.scene.start('GameOver', gameOverData);
-      return;
-    }
+  private initializePools(): void {
+    // Enemy pool
+    this.enemyPool = new ObjectPool<Enemy>(
+      (type: string, x: number, y: number) => {
+        const enemy = Enemy.createEnemy(type, this, x, y);
+        if (enemy) {
+          enemy.setActive(false);
+          enemy.setVisible(false);
+        }
+        return enemy!;
+      },
+      (enemy: Enemy) => {
+        enemy.reset();
+      },
+      20, // initial size
+      100 // max size
+    );
 
-    this.player.update(delta);
-    if (this.spawnManager) {
-      this.spawnManager.update(delta);
-    }
+    // Collectible pool
+    this.collectiblePool = new ObjectPool<Collectible>(
+      (texture: string, type: CollectibleEnum, value: number, x: number, y: number) => {
+        const collectible = new Collectible(this, x, y, texture, type, value);
+        return collectible;
+      },
+      (collectible: Collectible) => {
+        collectible.reset();
+      },
+      10, // initial size
+      50 // max size
+    );
 
-    // Update game timer
-    this.gameTimer += delta;
-
-    // Update UI
-    this.updateHealthBar();
-    this.scoreText.setText(`Score: ${this.player.score}`);
-    this.timerText.setText(`Time: ${(this.gameTimer / 1000).toFixed(1)}s`);
-    if (this.spawnManager) {
-      this.waveText.setText(`Wave: ${this.spawnManager.getCurrentWave()}`);
+    // Pre-populate projectile pool
+    for (let i = 0; i < 20; i++) {
+      const projectile = this.matter.add.circle(0, 0, 8, { isSensor: true });
+      projectile.collisionFilter = { category: COLLISION_CATEGORY_ATTACK, mask: COLLISION_CATEGORY_ENEMY, group: 0 };
+      this.matter.world.remove(projectile); // Remove from world initially
+      this.projectilePool.push(projectile);
     }
-    this.updateBuffUI();
   }
 
-  private updateMultiplayer(delta: number) {
-    if (!this.networkManager) return;
-
-    // Send local player input to server
-    const direction = this.getPlayerInputDirection();
-    const action = this.getPlayerAction();
-    this.networkManager.setInput(direction, action);
-
-    // Get interpolated state from server
-    const interpolatedState = this.networkManager.getInterpolatedState();
-    if (interpolatedState) {
-      // Update local player from server state
-      const localPlayerState = interpolatedState.players.find(p => p.id === this.player.id);
-      if (localPlayerState) {
-        this.player.x = localPlayerState.x;
-        this.player.y = localPlayerState.y;
-        this.player.health = localPlayerState.health;
-        this.player.maxHealth = localPlayerState.maxHealth;
-        this.player.facingDirection = localPlayerState.direction;
-
-        // Play animation based on direction
-        const dir = localPlayerState.direction.x === 0 ? (localPlayerState.direction.y === 1 ? 'down' : 'up') : (localPlayerState.direction.x === 1 ? 'right' : 'left');
-        if (localPlayerState.direction.x !== 0 || localPlayerState.direction.y !== 0) {
-          this.player.anims.play(`player-walk_${dir}`, true);
-        } else {
-          this.player.anims.play(`player-idle_${dir}`, true);
-        }
-
-        if (!localPlayerState.isAlive && this.player.state !== PlayerStateEnum.DEAD) {
-          // Handle game over
-          const gameOverData: GameOverSceneData = {
-            score: this.player.score,
-            time: this.gameTimer / 1000,
-            mode: this.mode
-          };
-          this.scene.start('GameOver', gameOverData);
-          return;
-        }
-      }
-
-      // Update remote players
-      this.updateRemotePlayers(delta, interpolatedState);
-
-      // Update enemies from server state
-      this.updateEnemiesFromServer(interpolatedState);
-
-      // Update collectibles from server state
-      this.updateCollectiblesFromServer(interpolatedState);
-
-      // Update UI from server state
-      this.updateUIFromServer(interpolatedState);
+  public getProjectile(x: number, y: number, mask: number): MatterJS.BodyType | null {
+    let projectile = this.projectilePool.pop();
+    if (!projectile) {
+      projectile = this.matter.add.circle(x, y, 8, { isSensor: true });
+      projectile.collisionFilter = { category: COLLISION_CATEGORY_ATTACK, mask: mask, group: 0 };
     } else {
-      // No server state, handle locally for testing
-      this.player.update(delta);
+      // Reset position
+      projectile.position.x = x;
+      projectile.position.y = y;
+      projectile.velocity.x = 0;
+      projectile.velocity.y = 0;
+      projectile.collisionFilter = { category: COLLISION_CATEGORY_ATTACK, mask: mask, group: 0 };
+      this.matter.world.add(projectile); // Add back to world
     }
-
-    if (this.spawnManager) {
-      this.spawnManager.update(delta);
-    }
-
-    // Update game timer
-    this.gameTimer += delta;
-
-    // Update health bar
-    this.updateHealthBar();
-    this.updateBuffUI();
+    return projectile;
   }
 
-  private getPlayerInputDirection(): { x: number; y: number } {
-    let x = 0;
-    let y = 0;
-    const cursors = this.input.keyboard!.createCursorKeys();
-    const wasd = {
-      up: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-      down: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-      left: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      right: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-    };
-
-    if (cursors.left.isDown || wasd.left.isDown) x = -1;
-    if (cursors.right.isDown || wasd.right.isDown) x = 1;
-    if (cursors.up.isDown || wasd.up.isDown) y = -1;
-    if (cursors.down.isDown || wasd.down.isDown) y = 1;
-
-    return { x, y };
-  }
-
-  private getPlayerAction(): string | undefined {
-    const attackKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    if (Phaser.Input.Keyboard.JustDown(attackKey)) {
-      return 'attack';
+  public releaseProjectile(projectile: MatterJS.BodyType): void {
+    this.matter.world.remove(projectile);
+    if (this.projectilePool.length < 50) { // Max pool size
+      this.projectilePool.push(projectile);
     }
-    return undefined;
   }
 
-  private updateRemotePlayers(delta: number, roomState: RoomState): void {
-    const localPlayerId = this.player.id;
+  private initializeSinglePlayer() {
+    // Create spawn manager with level up callback
+    this.spawnManager = new SpawnManager(this, this.player, this.enemyPool, () => this.showUpgradeSelection());
+    // Start first wave
+    this.spawnManager.startWave();
 
-    // Update existing remote players and create new ones
-    roomState.players.forEach(playerState => {
-      if (playerState.id === localPlayerId) return; // Skip local player
-
-      let remotePlayer = this.remotePlayers.get(playerState.id);
-      if (!remotePlayer) {
-        // Create new remote player
-        remotePlayer = new RemotePlayer(this, playerState.x, playerState.y, 'player');
-        remotePlayer.setPlayerId(playerState.id);
-        this.remotePlayers.set(playerState.id, remotePlayer);
-      }
-
-      // Update remote player with interpolated state
-      remotePlayer.update(delta, playerState);
+    // Add wave text for single player
+    this.waveText = this.add.text(10, 40, `Wave: 1`, {
+      fontSize: '24px',
+      color: '#ffffff'
     });
+    this.uiContainer.add(this.waveText);
 
-    // Remove remote players that are no longer in the state
-    const currentPlayerIds = new Set(roomState.players.map(p => p.id));
-    this.remotePlayers.forEach((remotePlayer, id) => {
-      if (!currentPlayerIds.has(id)) {
-        remotePlayer.destroy();
-        this.remotePlayers.delete(id);
-      }
-    });
+    // Initialize upgrade UI
+    this.updateUpgradeUI();
   }
 
   private updateBuffUI(): void {
@@ -529,111 +351,6 @@ export class GameScene extends Phaser.Scene {
       });
       this.buffTexts.push(text);
       this.uiContainer.add(text);
-    }
-  }
-
-  private updateEnemiesFromServer(roomState: RoomState): void {
-    // Update existing enemies and create new ones
-    roomState.enemies.forEach((enemyState: EnemyState) => {
-      let enemy = this.activeEnemies.get(enemyState.id);
-      if (!enemy) {
-        // Create new enemy
-        enemy = Enemy.createEnemy(enemyState.type.toLowerCase(), this, enemyState.x, enemyState.y);
-        if (enemy) {
-          enemy.id = enemyState.id;
-          enemy.setPlayer(this.player);
-          this.activeEnemies.set(enemyState.id, enemy);
-        }
-      }
-
-      // Update enemy state
-      if (enemy) {
-        enemy.x = enemyState.x;
-        enemy.y = enemyState.y;
-        enemy.health = enemyState.health;
-        enemy.maxHealth = enemyState.maxHealth;
-        enemy.speed = enemyState.speed;
-        enemy.damage = enemyState.damage;
-
-        if (!enemyState.isAlive && enemy.isAlive) {
-          enemy.die();
-        }
-      }
-    });
-
-    // Remove enemies that are no longer in the state
-    const currentEnemyIds = new Set(roomState.enemies.map(e => e.id));
-    this.activeEnemies.forEach((enemy, id) => {
-      if (!currentEnemyIds.has(id)) {
-        enemy.destroy();
-        this.activeEnemies.delete(id);
-      }
-    });
-  }
-
-  private updateCollectiblesFromServer(roomState: RoomState): void {
-    // Update existing collectibles and create new ones
-    roomState.collectibles.forEach((collectibleState: CollectibleType) => {
-      let collectible = this.activeCollectibles.get(collectibleState.id);
-      if (!collectible) {
-        // Create new collectible
-        const texture = this.getCollectibleTexture(collectibleState.type);
-        collectible = new Collectible(this, collectibleState.x, collectibleState.y, texture, collectibleState.type, collectibleState.value);
-        collectible.id = collectibleState.id;
-        this.activeCollectibles.set(collectibleState.id, collectible);
-      }
-
-      // Update collectible position
-      if (collectible) {
-        collectible.x = collectibleState.x;
-        collectible.y = collectibleState.y;
-      }
-    });
-
-    // Remove collectibles that are no longer in the state
-    const currentCollectibleIds = new Set(roomState.collectibles.map(c => c.id));
-    this.activeCollectibles.forEach((collectible, id) => {
-      if (!currentCollectibleIds.has(id)) {
-        collectible.destroy();
-        this.activeCollectibles.delete(id);
-      }
-    });
-  }
-
-  private getCollectibleTexture(type: string): string {
-    switch (type) {
-      case 'health': return 'health_potion';
-      case 'coin': return 'coin';
-      case 'shield': return 'shield';
-      case 'damage_boost': return 'damage_boost';
-      case 'speed_boost': return 'speed_boost';
-      default: return 'collectible';
-    }
-  }
-
-  private updateUIFromServer(roomState: RoomState): void {
-    this.waveText.setText(`Wave: ${roomState.wave}`);
-    this.playerCountText.setText(`Players: ${roomState.players.length}`);
-
-    // Handle room state UI
-    if (roomState.state === GameState.WAITING) {
-      this.waitingText.setText('Waiting for more players...');
-    } else if (roomState.state === GameState.STARTING) {
-      this.waitingText.setText('Game Starting...');
-    } else if (roomState.state === GameState.PLAYING) {
-      this.waitingText.setText('');
-    } else if (roomState.state === GameState.FINISHED) {
-      this.waitingText.setText('Game Finished');
-      // Could transition to game over scene
-    }
-    // Score would need to be in roomState or playerState
-    // For now, keep local score
-  }
-
-  private startBackgroundMusic(): void {
-    if (this.sound.get('background_music')) {
-      const music = this.sound.add('background_music', { loop: true, volume: 0.5 });
-      music.play();
     }
   }
 
@@ -701,6 +418,245 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private startBackgroundMusic(): void {
+    if (this.sound.get('background_music')) {
+      const music = this.sound.add('background_music', { loop: true, volume: 0.5 });
+      music.play();
+    }
+  }
+
+  private updateSinglePlayer(delta: number) {
+    // Check for player death
+    if (this.player.state === PlayerStateEnum.DEAD) {
+      const gameOverData: GameOverSceneData = {
+        score: this.player.score,
+        time: this.gameTimer / 1000
+      };
+      this.scene.start('GameOver', gameOverData);
+      return;
+    }
+
+    // Update player (handles movement and animation)
+    this.player.update(delta);
+    if (this.spawnManager) {
+      this.spawnManager.update(delta);
+    }
+
+    // Update game timer
+    this.gameTimer += delta;
+
+    // Update UI
+    this.updateHealthBar();
+    this.scoreText.setText(`Score: ${this.player.score}`);
+    this.timerText.setText(`Time: ${(this.gameTimer / 1000).toFixed(1)}s`);
+    if (this.spawnManager) {
+      this.waveText.setText(`Wave: ${this.spawnManager.getCurrentWave()}`);
+    }
+    this.updateBuffUI();
+  }
+
+  private updateMultiplayer(delta: number) {
+    if (!this.networkManager) return;
+
+    // Send player input to server (server-authoritative movement)
+    const direction = this.getPlayerInputDirection();
+    const action = this.getPlayerAction();
+
+    // Update player's facing direction based on input for animation
+    if (direction.x !== 0 || direction.y !== 0) {
+      this.player.facingDirection = direction;
+    }
+
+    this.networkManager.sendInput(direction, action === 'attack' ? 'attack' : undefined);
+
+    // Update game timer
+    this.gameTimer += delta;
+
+    // Update UI
+    this.updateHealthBar();
+  }
+
+  private getPlayerInputDirection(): { x: number; y: number } {
+    let x = 0;
+    let y = 0;
+    const cursors = this.input.keyboard!.createCursorKeys();
+    const wasd = {
+      up: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      down: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+      left: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      right: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+    };
+
+    if (cursors.left.isDown || wasd.left.isDown) x = -1;
+    if (cursors.right.isDown || wasd.right.isDown) x = 1;
+    if (cursors.up.isDown || wasd.up.isDown) y = -1;
+    if (cursors.down.isDown || wasd.down.isDown) y = 1;
+
+    return { x, y };
+  }
+
+  private getPlayerAction(): string | undefined {
+    const attackKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    if (Phaser.Input.Keyboard.JustDown(attackKey)) {
+      return 'attack';
+    }
+    return undefined;
+  }
+
+  private setupNetworkHandlers() {
+    if (!this.networkManager) return;
+
+    this.networkManager.onYouJoined((payload) => {
+      console.log('You joined the game with ID:', payload.playerId);
+    });
+
+    this.networkManager.onGameStateUpdate((payload) => {
+      this.handleGameStateUpdate(payload.gameState);
+    });
+
+    this.networkManager.onPlayerJoined((payload) => {
+      console.log('Player joined:', payload.player.id);
+    });
+
+    this.networkManager.onPlayerLeft((payload) => {
+      console.log('Player left:', payload.playerId);
+      this.remotePlayers.delete(payload.playerId);
+    });
+
+    this.networkManager.onGameStart((payload) => {
+      console.log('Game started');
+      this.waitingText.setText('');
+    });
+
+    this.networkManager.onGameEnd((payload) => {
+      console.log('Game ended');
+      // Handle game end - show winner
+      const winner = payload.winner;
+      if (winner) {
+        this.waitingText.setText(`Game Over! Winner: Player ${winner}`);
+      } else {
+        this.waitingText.setText('Game Over!');
+      }
+      // Return to menu after a delay
+      this.time.delayedCall(3000, () => {
+        this.scene.start('MainMenu');
+      });
+    });
+  }
+
+  private handleGameStateUpdate(gameState: GameStateData) {
+    if (!this.player || !this.player.body) {
+      console.warn('Player or body not ready');
+      return;
+    }
+
+    // Update local player from server state
+    const localPlayerData = gameState.players.find(p => p.id === this.networkManager!.getPlayerId());
+    if (localPlayerData) {
+      // Store previous position for animation determination
+      const prevX = this.player.x;
+      const prevY = this.player.y;
+
+      // Update position directly (server-authoritative)
+      this.player.x = localPlayerData.x;
+      this.player.y = localPlayerData.y;
+
+      this.player.health = localPlayerData.health;
+      this.player.maxHealth = localPlayerData.maxHealth;
+      // Sync facing direction with server data
+      this.player.facingDirection = localPlayerData.facingDirection;
+      this.player.score = localPlayerData.score;
+      this.player.setLastAttackTime(localPlayerData.lastAttackTime);
+
+      // Update animation based on current state
+      let dir = 'down'; // default
+      if (localPlayerData.facingDirection.x > 0) {
+        dir = 'right';
+      } else if (localPlayerData.facingDirection.x < 0) {
+        dir = 'left';
+      } else if (localPlayerData.facingDirection.y > 0) {
+        dir = 'down';
+      } else if (localPlayerData.facingDirection.y < 0) {
+        dir = 'up';
+      }
+
+      if (localPlayerData.currentState === 'attacking') {
+        this.player.state = PlayerStateEnum.ATTACKING;
+        this.player.anims.play(`player-attack_${dir}`, true);
+      } else if (localPlayerData.currentState === 'walking') {
+        this.player.state = PlayerStateEnum.WALKING;
+        this.player.anims.play(`player-walk_${dir}`, true);
+      } else {
+        this.player.state = PlayerStateEnum.IDLE;
+        this.player.anims.play(`player-idle_${dir}`, true);
+      }
+
+      // Handle death
+      if (localPlayerData.state === PlayerState.DEAD && this.player.health > 0) {
+        this.player.health = 0; // Ensure health is 0
+        this.player.state = PlayerStateEnum.DEAD;
+        this.player.anims.play('player-death');
+        this.player.setActive(false);
+        this.player.setVisible(false);
+      }
+
+      // Handle revival
+      if (localPlayerData.state === PlayerState.ALIVE && this.player.health <= 0) {
+        this.player.health = localPlayerData.health;
+        this.player.state = PlayerStateEnum.IDLE;
+        this.player.setActive(true);
+        this.player.setVisible(true);
+      }
+    }
+
+    // Update remote players
+    this.updateRemotePlayers(gameState.players);
+
+    // Update UI
+    this.updateUIFromServer(gameState);
+  }
+
+  private updateRemotePlayers(players: PlayerData[]) {
+    const localPlayerId = this.networkManager!.getPlayerId();
+
+    // Update existing remote players
+    players.forEach(playerData => {
+      if (playerData.id === localPlayerId) return;
+
+      let remotePlayer = this.remotePlayers.get(playerData.id);
+      if (!remotePlayer) {
+        remotePlayer = new RemotePlayer(this, playerData.x, playerData.y, 'player_idle');
+        remotePlayer.setPlayerId(playerData.id);
+        this.remotePlayers.set(playerData.id, remotePlayer);
+      }
+
+      if (remotePlayer && remotePlayer.body) {
+        remotePlayer.update(16.67, playerData); // Assume 60 FPS delta
+      }
+    });
+
+    // Remove disconnected players
+    const currentPlayerIds = new Set(players.map(p => p.id));
+    this.remotePlayers.forEach((remotePlayer, id) => {
+      if (!currentPlayerIds.has(id)) {
+        remotePlayer.destroy();
+        this.remotePlayers.delete(id);
+      }
+    });
+  }
+
+  private updateUIFromServer(gameState: GameStateData) {
+    this.playerCountText.setText(`Players: ${gameState.players.length}`);
+
+    if (gameState.state === GameState.WAITING) {
+      this.waitingText.setText('Waiting for another player...');
+    } else if (gameState.state === GameState.PLAYING) {
+      this.waitingText.setText('');
+    } else if (gameState.state === GameState.FINISHED) {
+      this.waitingText.setText('Game Finished');
+    }
+  }
+
   destroy() {
     // Remove collision listeners
     this.matter.world.off('collisionstart');
@@ -714,35 +670,20 @@ export class GameScene extends Phaser.Scene {
     this.remotePlayers.forEach(remotePlayer => remotePlayer.destroy());
     this.remotePlayers.clear();
 
-    // Destroy active enemies (for multiplayer)
-    this.activeEnemies.forEach((enemy, id) => {
-      enemy.destroy();
-      this.enemyPool.release(enemy);
-    });
-    this.activeEnemies.clear();
-
-    // Destroy active collectibles (for multiplayer)
-    this.activeCollectibles.forEach((collectible, id) => {
-      collectible.destroy();
-      this.collectiblePool.release(collectible);
-    });
-    this.activeCollectibles.clear();
-
-    // Disconnect network manager
-    if (this.networkManager) {
-      this.networkManager.disconnect();
-    }
-
-    // Destroy active enemies from spawn manager (for single player)
+    // Destroy single-player enemies
     if (this.spawnManager) {
-      // Access private activeEnemies - this is a bit hacky, but necessary for cleanup
       const activeEnemies = (this.spawnManager as any).activeEnemies;
       if (activeEnemies) {
         activeEnemies.forEach((enemy: any) => {
           enemy.destroy();
-          this.enemyPool.release(enemy); // Release back to pool
+          this.enemyPool.release(enemy);
         });
       }
+    }
+
+    // Disconnect network
+    if (this.networkManager) {
+      this.networkManager.disconnect();
     }
 
     // Destroy UI elements

@@ -1,33 +1,16 @@
 import Phaser from 'phaser';
-import {
-  PLAYER_HEALTH,
-  PLAYER_MAX_HEALTH,
-  COLLISION_CATEGORY_PLAYER,
-  COLLISION_CATEGORY_OBSTACLE
-} from '../../shared/config/constants';
-import { PlayerState } from '../../shared/types';
+import { PlayerData } from '../../shared/types';
 
 export class RemotePlayer extends Phaser.Physics.Matter.Sprite {
-  public id: string;
-  public health: number;
-  public maxHealth: number;
-  private targetX: number;
-  private targetY: number;
-  private LERP_FACTOR = 0.3;
+  private playerId: string = '';
+  private lastUpdateTime: number = 0;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, texture: string, frame?: string | number) {
-    super(scene.matter.world, x, y, texture, frame);
-
-    this.id = '';
-    this.health = PLAYER_HEALTH;
-    this.maxHealth = PLAYER_MAX_HEALTH;
-    this.targetX = x;
-    this.targetY = y;
+  constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {
+    super(scene.matter.world, x, y, texture);
 
     // Set up physics body as circle
     this.setCircle(16);
-    this.setCollisionCategory(COLLISION_CATEGORY_PLAYER);
-    this.setCollidesWith([COLLISION_CATEGORY_OBSTACLE]);
+    this.setFixedRotation(); // Prevent rotation on collision
 
     // Add to scene
     scene.add.existing(this);
@@ -37,67 +20,142 @@ export class RemotePlayer extends Phaser.Physics.Matter.Sprite {
   }
 
   private setupAnimations(texture: string): void {
-    // Assume frames are sequential starting from 0
+    // Idle animations
     this.scene.anims.create({
-      key: `remote-player-idle-${this.id}`,
-      frames: this.scene.anims.generateFrameNumbers(texture, { start: 0, end: 3 }),
+      key: 'remote-idle_down',
+      frames: this.anims.generateFrameNumbers(texture, { frames: [0, 1, 2, 3] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: `remote-player-walk-${this.id}`,
-      frames: this.scene.anims.generateFrameNumbers(texture, { start: 4, end: 7 }),
+      key: 'remote-idle_up',
+      frames: this.anims.generateFrameNumbers(texture, { frames: [4, 5, 6, 7] }),
       frameRate: 10,
       repeat: -1
     });
 
     this.scene.anims.create({
-      key: `remote-player-attack-${this.id}`,
-      frames: this.scene.anims.generateFrameNumbers(texture, { start: 8, end: 11 }),
-      frameRate: 15,
+      key: 'remote-idle_left',
+      frames: this.anims.generateFrameNumbers(texture, { frames: [8, 9, 10, 11] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    this.scene.anims.create({
+      key: 'remote-idle_right',
+      frames: this.anims.generateFrameNumbers(texture, { frames: [12, 13, 14, 15] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    // Walk animations
+    this.scene.anims.create({
+      key: 'remote-walk_down',
+      frames: this.anims.generateFrameNumbers('player_walk', { frames: [0, 1, 2, 3, 4, 5, 6, 7] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    this.scene.anims.create({
+      key: 'remote-walk_up',
+      frames: this.anims.generateFrameNumbers('player_walk', { frames: [8, 9, 10, 11, 12, 13, 14, 15] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    this.scene.anims.create({
+      key: 'remote-walk_left',
+      frames: this.anims.generateFrameNumbers('player_walk', { frames: [16, 17, 18, 19, 20, 21, 22, 23] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    this.scene.anims.create({
+      key: 'remote-walk_right',
+      frames: this.anims.generateFrameNumbers('player_walk', { frames: [24, 25, 26, 27, 28, 29, 30, 31] }),
+      frameRate: 10,
+      repeat: -1
+    });
+
+    // Attack animations
+    this.scene.anims.create({
+      key: 'remote-attack_down',
+      frames: this.anims.generateFrameNumbers('player_attack', { frames: [0, 1, 2, 3, 4, 5] }),
+      frameRate: 10,
       repeat: 0
     });
 
     this.scene.anims.create({
-      key: `remote-player-death-${this.id}`,
-      frames: this.scene.anims.generateFrameNumbers(texture, { start: 12, end: 15 }),
+      key: 'remote-attack_up',
+      frames: this.anims.generateFrameNumbers('player_attack', { frames: [6, 7, 8, 9, 10, 11] }),
       frameRate: 10,
       repeat: 0
     });
-  }
 
-  update(delta: number, playerState: PlayerState): void {
-    // Update target positions
-    this.targetX = playerState.x;
-    this.targetY = playerState.y;
+    this.scene.anims.create({
+      key: 'remote-attack_left',
+      frames: this.anims.generateFrameNumbers('player_attack', { frames: [12, 13, 14, 15, 16, 17] }),
+      frameRate: 10,
+      repeat: 0
+    });
 
-    // Interpolate position using LERP with delta time for consistent speed
-    const lerpFactor = this.LERP_FACTOR * (delta / 16.67); // Normalize to 60 FPS
-    this.x = Phaser.Math.Linear(this.x, this.targetX, lerpFactor);
-    this.y = Phaser.Math.Linear(this.y, this.targetY, lerpFactor);
+    this.scene.anims.create({
+      key: 'remote-attack_right',
+      frames: this.anims.generateFrameNumbers('player_attack', { frames: [18, 19, 20, 21, 22, 23] }),
+      frameRate: 10,
+      repeat: 0
+    });
 
-    // Snap discrete values
-    this.health = playerState.health;
-    this.maxHealth = playerState.maxHealth;
-
-    // Handle animation based on movement
-    const distance = Phaser.Math.Distance.Between(this.x, this.y, this.targetX, this.targetY);
-    if (distance > 1) {
-      this.anims.play(`remote-player-walk-${this.id}`, true);
-    } else {
-      this.anims.play(`remote-player-idle-${this.id}`, true);
-    }
-
-    // Handle death
-    if (!playerState.isAlive) {
-      this.anims.play(`remote-player-death-${this.id}`);
-      this.setActive(false);
-      this.setVisible(false);
-    }
+    // Death animation
+    this.scene.anims.create({
+      key: 'remote-death',
+      frames: this.anims.generateFrameNumbers(texture, { start: 12, end: 15 }),
+      frameRate: 10,
+      repeat: 0
+    });
   }
 
   setPlayerId(id: string): void {
-    this.id = id;
+    this.playerId = id;
+  }
+
+  getPlayerId(): string {
+    return this.playerId;
+  }
+
+  update(delta: number, playerData: PlayerData): void {
+    // Update position
+    this.x = playerData.x;
+    this.y = playerData.y;
+
+    // Update animation based on direction and state
+    if (playerData.state === 'DEAD') {
+      this.anims.play('remote-death', true);
+      this.setActive(false);
+      this.setVisible(false);
+    } else {
+      this.setActive(true);
+      this.setVisible(true);
+
+      let dir = 'down'; // default
+      if (playerData.facingDirection.x > 0) {
+        dir = 'right';
+      } else if (playerData.facingDirection.x < 0) {
+        dir = 'left';
+      } else if (playerData.facingDirection.y > 0) {
+        dir = 'down';
+      } else if (playerData.facingDirection.y < 0) {
+        dir = 'up';
+      }
+
+      if (playerData.currentState === 'attacking') {
+        this.anims.play(`remote-attack_${dir}`, true);
+      } else if (playerData.currentState === 'walking') {
+        this.anims.play(`remote-walk_${dir}`, true);
+      } else {
+        this.anims.play(`remote-idle_${dir}`, true);
+      }
+    }
   }
 }

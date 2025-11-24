@@ -1,9 +1,6 @@
-import { SERVER_PORT } from '../shared/config/constants';
 import { WebSocketServer } from './WebSocketServer';
-import { RoomManager } from './RoomManager';
 
-const roomManager = new RoomManager();
-const wsServer = new WebSocketServer(SERVER_PORT, roomManager);
-roomManager.setWsServer(wsServer);
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 
+const server = new WebSocketServer(PORT);
 console.log('Server started');

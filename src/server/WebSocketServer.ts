@@ -1,20 +1,20 @@
 import WebSocket from 'ws';
 import * as msgpack from 'msgpack-lite';
-import { Message, MessageType } from '../shared/types/index';
+import { GameMessage, MessageType, GameStateUpdatePayload, PlayerJoinedPayload, PlayerLeftPayload, GameStartPayload, GameEndPayload } from '../shared/types/index';
 import { UPDATE_RATE } from '../shared/config/constants';
-import { RoomManager } from './RoomManager';
+import { GameRoom } from './GameRoom';
 
 declare module 'msgpack-lite';
 
 export class WebSocketServer {
   private wss: WebSocket.Server;
-  private roomManager: RoomManager;
+  private gameRoom: GameRoom;
   private connections: Map<string, WebSocket> = new Map();
   private playerIdCounter = 0;
 
-  constructor(port: number, roomManager: RoomManager) {
-    this.roomManager = roomManager;
+  constructor(port: number) {
     this.wss = new WebSocket.Server({ port });
+    this.gameRoom = new GameRoom(this);
 
     this.wss.on('connection', this.handleConnection.bind(this));
     console.log(`[Server] WebSocket server started on port ${port}`);
@@ -24,9 +24,8 @@ export class WebSocketServer {
   }
 
   private gameLoop() {
-    for (const room of this.roomManager.getAllRooms()) {
-      room.update();
-    }
+    this.gameRoom.update();
+    this.broadcastGameState();
   }
 
   private handleConnection(ws: WebSocket, req: any) {
@@ -50,13 +49,13 @@ export class WebSocketServer {
       } else {
         buffer = Buffer.from(data);
       }
-      const message: Message = msgpack.decode(buffer);
+
+      const message: GameMessage = msgpack.decode(buffer);
       const playerId = (ws as any).playerId;
 
       console.log(`[Server] Received message from ${playerId}: ${message.type}`, message.data);
 
-      // Route message to room manager
-      this.roomManager.handleMessage(playerId, message);
+      this.gameRoom.handleMessage(playerId, message);
     } catch (e) {
       console.error(`[Server] Invalid message received from ${(ws as any).playerId}:`, e);
     }
@@ -67,7 +66,7 @@ export class WebSocketServer {
     if (playerId) {
       console.log(`[Server] Player ${playerId} disconnected`);
       this.connections.delete(playerId);
-      this.roomManager.removePlayer(playerId);
+      this.gameRoom.removePlayer(playerId);
     }
   }
 
@@ -75,25 +74,77 @@ export class WebSocketServer {
     return `player_${++this.playerIdCounter}`;
   }
 
-  public sendToPlayer(playerId: string, message: Message) {
+  public sendToPlayer(playerId: string, message: GameMessage) {
     const ws = this.connections.get(playerId);
     if (ws && ws.readyState === WebSocket.OPEN) {
       const encoded = msgpack.encode(message);
-      console.log(`[Server] Sending message to ${playerId}: ${message.type}`, message.data);
+      console.log(`[Server] Sending message to ${playerId}: ${message.type}`);
       ws.send(encoded);
     } else {
       console.warn(`[Server] Cannot send message to ${playerId}: connection not available`);
     }
   }
 
-  public broadcastToRoom(roomId: string, message: Message, excludePlayerId?: string) {
-    const room = this.roomManager.getRoom(roomId);
-    if (room) {
-      room.players.forEach(player => {
-        if (player.id !== excludePlayerId) {
-          this.sendToPlayer(player.id, message);
-        }
-      });
+  private broadcastToAll(message: GameMessage, excludePlayerId?: string) {
+    for (const [playerId, ws] of this.connections) {
+      if (playerId !== excludePlayerId && ws.readyState === WebSocket.OPEN) {
+        this.sendToPlayer(playerId, message);
+      }
     }
+  }
+
+  private broadcastGameState() {
+    const gameState = this.gameRoom.getGameState();
+    const payload: GameStateUpdatePayload = {
+      gameState,
+      timestamp: Date.now()
+    };
+
+    const message: GameMessage = {
+      type: MessageType.GAME_STATE_UPDATE,
+      data: payload,
+      timestamp: Date.now()
+    };
+
+    this.broadcastToAll(message);
+  }
+
+  // Methods called by GameRoom
+  notifyPlayerJoined(playerId: string, playerData: any) {
+    const payload: PlayerJoinedPayload = { player: playerData };
+    const message: GameMessage = {
+      type: MessageType.PLAYER_JOINED,
+      data: payload
+    };
+    this.broadcastToAll(message, playerId);
+  }
+
+  notifyPlayerLeft(playerId: string) {
+    const payload: PlayerLeftPayload = { playerId };
+    const message: GameMessage = {
+      type: MessageType.PLAYER_LEFT,
+      data: payload
+    };
+    this.broadcastToAll(message);
+  }
+
+  notifyGameStart() {
+    const gameState = this.gameRoom.getGameState();
+    const payload: GameStartPayload = { gameState };
+    const message: GameMessage = {
+      type: MessageType.GAME_START,
+      data: payload
+    };
+    this.broadcastToAll(message);
+  }
+
+  notifyGameEnd(winner?: string) {
+    const finalScores = this.gameRoom.getFinalScores();
+    const payload: GameEndPayload = { winner, finalScores };
+    const message: GameMessage = {
+      type: MessageType.GAME_END,
+      data: payload
+    };
+    this.broadcastToAll(message);
   }
 }

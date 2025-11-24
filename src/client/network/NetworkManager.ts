@@ -1,16 +1,4 @@
-import Phaser from 'phaser';
-import {
-  Message,
-  MessageType,
-  JoinPayload,
-  CreateRoomPayload,
-  JoinRoomPayload,
-  RoomJoinedPayload,
-  PlayerJoinedPayload,
-  PlayerLeftPayload,
-  StateUpdatePayload,
-  RoomState
-} from '../../shared/types/index';
+import { GameMessage, MessageType, GameStateUpdatePayload, PlayerJoinedPayload, PlayerLeftPayload, YouJoinedPayload, GameStartPayload, GameEndPayload, PlayerInputPayload, JoinGamePayload } from '../../shared/types/index';
 
 // @ts-ignore
 import * as msgpack from 'msgpack-lite';
@@ -18,45 +6,39 @@ import * as msgpack from 'msgpack-lite';
 export class NetworkManager {
   private ws: WebSocket | null = null;
   private messageHandlers: Map<MessageType, (data: any) => void> = new Map();
-  private inputInterval: NodeJS.Timeout | null = null;
-  private currentDirection: { x: number; y: number } = { x: 0, y: 0 };
-  private currentAction?: string;
-  private previousState: RoomState | null = null;
-  private currentState: RoomState | null = null;
+  private connected: boolean = false;
+  private playerId: string | null = null;
+
+  // State interpolation
+  private previousState: any = null;
+  private currentState: any = null;
   private stateTimestamp: number = 0;
 
   constructor(private serverUrl: string) {}
 
-  connect(): Promise<void> {
+  async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      console.log(`[Network] Attempting to connect to ${this.serverUrl}`);
+      console.log(`[Network] Connecting to ${this.serverUrl}`);
       this.ws = new WebSocket(this.serverUrl);
 
       this.ws.onopen = () => {
-        console.log(`[Network] Successfully connected to server at ${this.serverUrl}`);
+        console.log('[Network] Connected to server');
+        this.connected = true;
         resolve();
       };
 
       this.ws.onmessage = (event) => {
-        console.log(`[Network] Received message from server (${event.data.byteLength || event.data.length} bytes)`);
-        if (event.data instanceof Blob) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            this.handleMessage(reader.result as ArrayBuffer);
-          };
-          reader.readAsArrayBuffer(event.data);
-        } else {
-          this.handleMessage(event.data);
-        }
+        this.handleMessage(event.data);
+      };
+
+      this.ws.onclose = () => {
+        console.log('[Network] Disconnected from server');
+        this.connected = false;
       };
 
       this.ws.onerror = (error) => {
-        console.error('[Network] WebSocket error:', error);
+        console.error('[Network] Connection error:', error);
         reject(error);
-      };
-
-      this.ws.onclose = (event) => {
-        console.log(`[Network] Disconnected from server. Code: ${event.code}, Reason: ${event.reason}`);
       };
     });
   }
@@ -66,115 +48,126 @@ export class NetworkManager {
       this.ws.close();
       this.ws = null;
     }
-    this.stopInputLoop();
+    this.connected = false;
   }
 
-  private handleMessage(data: ArrayBuffer | Blob) {
+  private handleMessage(data: any) {
     try {
       let buffer: ArrayBuffer;
       if (data instanceof ArrayBuffer) {
         buffer = data;
       } else if (data instanceof Blob) {
-        // For Blob, we'd need to convert to ArrayBuffer, but assuming it's ArrayBuffer for now
-        throw new Error('Blob data not supported');
+        // Convert Blob to ArrayBuffer
+        const reader = new FileReader();
+        reader.onload = () => {
+          this.handleMessage(reader.result as ArrayBuffer);
+        };
+        reader.readAsArrayBuffer(data);
+        return;
       } else {
-        buffer = data as ArrayBuffer;
+        buffer = data;
       }
 
-      const message: Message = msgpack.decode(new Uint8Array(buffer));
-      console.log(`[Network] Processing message type: ${message.type}`, message.data);
+      const message: GameMessage = msgpack.decode(new Uint8Array(buffer));
+      console.log(`[Network] Received: ${message.type}`, message.data);
 
       const handler = this.messageHandlers.get(message.type);
       if (handler) {
         handler(message.data);
-      } else {
-        console.warn(`[Network] No handler for message type: ${message.type}`);
       }
     } catch (e) {
       console.error('[Network] Failed to decode message:', e);
     }
   }
 
-  private sendMessage(type: MessageType, data: any) {
+  private sendMessage(message: GameMessage) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('[Network] Cannot send message: WebSocket not connected');
+      console.warn('[Network] Cannot send message: not connected');
       return;
     }
 
-    const message: Message = { type, data };
     const encoded = msgpack.encode(message);
-    console.log(`[Network] Sending message type: ${type}`, data);
     this.ws.send(encoded);
+    console.log(`[Network] Sent: ${message.type}`);
   }
 
-  // Message handlers
-  onRoomJoined(handler: (data: RoomJoinedPayload) => void) {
-    this.messageHandlers.set(MessageType.ROOM_JOINED, handler);
+  // Public API
+  joinGame(playerName?: string) {
+    const payload: JoinGamePayload = { playerName };
+    this.sendMessage({
+      type: MessageType.JOIN_GAME,
+      data: payload
+    });
   }
 
-  onPlayerJoined(handler: (data: PlayerJoinedPayload) => void) {
-    this.messageHandlers.set(MessageType.PLAYER_JOINED, handler);
+  leaveGame() {
+    this.sendMessage({
+      type: MessageType.LEAVE_GAME,
+      data: {}
+    });
   }
 
-  onPlayerLeft(handler: (data: PlayerLeftPayload) => void) {
-    this.messageHandlers.set(MessageType.PLAYER_LEFT, handler);
+  sendInput(direction: { x: number; y: number }, action?: 'attack') {
+    const payload: PlayerInputPayload = { direction, action };
+    this.sendMessage({
+      type: MessageType.PLAYER_INPUT,
+      data: payload
+    });
   }
 
-  onStateUpdate(handler: (data: StateUpdatePayload) => void) {
-    this.messageHandlers.set(MessageType.STATE_UPDATE, (data: StateUpdatePayload) => {
+  // Event handlers
+  onGameStateUpdate(handler: (payload: GameStateUpdatePayload) => void) {
+    this.messageHandlers.set(MessageType.GAME_STATE_UPDATE, (data: GameStateUpdatePayload) => {
       // Store states for interpolation
       this.previousState = this.currentState;
-      this.currentState = data.roomState;
-      this.stateTimestamp = Date.now();
-      // Call the user handler
+      this.currentState = data.gameState;
+      this.stateTimestamp = data.timestamp;
       handler(data);
     });
   }
 
-  // Input management
-  setInput(direction: { x: number; y: number }, action?: string) {
-    this.currentDirection = direction;
-    this.currentAction = action;
+  onPlayerJoined(handler: (payload: PlayerJoinedPayload) => void) {
+    this.messageHandlers.set(MessageType.PLAYER_JOINED, handler);
   }
 
-  startInputLoop() {
-    if (this.inputInterval) return;
-    this.inputInterval = setInterval(() => {
-      this.sendInput(this.currentDirection, this.currentAction);
-    }, 1000 / 60); // 60 FPS
+  onYouJoined(handler: (payload: YouJoinedPayload) => void) {
+    this.messageHandlers.set(MessageType.YOU_JOINED, (data: YouJoinedPayload) => {
+      this.setPlayerId(data.playerId);
+      handler(data);
+    });
   }
 
-  stopInputLoop() {
-    if (this.inputInterval) {
-      clearInterval(this.inputInterval);
-      this.inputInterval = null;
-    }
+  onPlayerLeft(handler: (payload: PlayerLeftPayload) => void) {
+    this.messageHandlers.set(MessageType.PLAYER_LEFT, handler);
   }
 
-  // Get interpolated state for rendering
-  getInterpolatedState(): RoomState | null {
+  onGameStart(handler: (payload: GameStartPayload) => void) {
+    this.messageHandlers.set(MessageType.GAME_START, handler);
+  }
+
+  onGameEnd(handler: (payload: GameEndPayload) => void) {
+    this.messageHandlers.set(MessageType.GAME_END, handler);
+  }
+
+  // State interpolation
+  getInterpolatedState() {
     if (!this.currentState) return null;
     if (!this.previousState) return this.currentState;
 
     const LERP_FACTOR = 0.3;
     const now = Date.now();
     const timeSinceUpdate = now - this.stateTimestamp;
-    const interpolationFactor = Math.min(timeSinceUpdate / (1000 / 20), 1); // Cap at 1 for 20Hz updates
+    const interpolationFactor = Math.min(timeSinceUpdate / (1000 / 20), 1); // Cap at 20Hz
 
     // Interpolate player positions
-    const interpolatedPlayers = this.currentState.players.map(currentPlayer => {
-      const previousPlayer = this.previousState!.players.find(p => p.id === currentPlayer.id);
+    const interpolatedPlayers = this.currentState.players.map((currentPlayer: any) => {
+      const previousPlayer = this.previousState.players.find((p: any) => p.id === currentPlayer.id);
       if (!previousPlayer) return currentPlayer;
 
       return {
         ...currentPlayer,
         x: Phaser.Math.Linear(previousPlayer.x, currentPlayer.x, LERP_FACTOR),
         y: Phaser.Math.Linear(previousPlayer.y, currentPlayer.y, LERP_FACTOR),
-        // Snap discrete values
-        health: currentPlayer.health,
-        maxHealth: currentPlayer.maxHealth,
-        isAlive: currentPlayer.isAlive,
-        lastAttackTime: currentPlayer.lastAttackTime
       };
     });
 
@@ -184,20 +177,16 @@ export class NetworkManager {
     };
   }
 
-  // Send methods
-  sendJoin(playerName: string) {
-    this.sendMessage(MessageType.JOIN, { playerName } as JoinPayload);
+  // Getters
+  isConnected(): boolean {
+    return this.connected;
   }
 
-  sendCreateRoom(roomName: string) {
-    this.sendMessage(MessageType.CREATE_ROOM, { roomName } as CreateRoomPayload);
+  getPlayerId(): string | null {
+    return this.playerId;
   }
 
-  sendJoinRoom(roomId: string) {
-    this.sendMessage(MessageType.JOIN_ROOM, { roomId } as JoinRoomPayload);
-  }
-
-  sendInput(direction: { x: number; y: number }, action?: string) {
-    this.sendMessage(MessageType.INPUT, { direction, action });
+  setPlayerId(id: string) {
+    this.playerId = id;
   }
 }
