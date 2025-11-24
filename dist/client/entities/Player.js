@@ -184,7 +184,6 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
             this.facingDirection = { x: 0, y: 1 };
         }
         if (velocityX !== 0 || velocityY !== 0) {
-            console.log('Player is moving');
             this.state = types_1.PlayerStateEnum.WALKING;
             this.anims.play(`player-walk_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true);
         }
@@ -228,7 +227,6 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
         }
     }
     attack() {
-        console.log('Player attack executed');
         this.state = types_1.PlayerStateEnum.ATTACKING;
         this.anims.play(`player-attack_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true);
         this.lastAttackTime = this.scene.time.now;
@@ -288,7 +286,6 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
     playAttackSound() {
         const now = this.scene.time.now;
         if (now - this.lastSoundTime > this.soundCooldown) {
-            console.log('Playing player_attack sound');
             this.scene.sound.play('player_attack', { volume: 1 });
             this.lastSoundTime = now;
         }
@@ -296,6 +293,7 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
     takeDamage(amount) {
         if (this.invulnerable)
             return;
+        this.scene.sound.play('enemy_damage');
         this.health -= amount;
         if (this.health <= 0) {
             this.die();

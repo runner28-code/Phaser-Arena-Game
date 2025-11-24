@@ -24,6 +24,7 @@ class MainMenuScene extends phaser_1.default.Scene {
         }).setOrigin(0.5).setInteractive().setName('singlePlayerButton');
         singlePlayerButton.on('pointerdown', () => {
             this.scene.start('Game', { mode: 'single' });
+            this.sound.play('btn_click');
         });
         // Multiplayer button
         const multiplayerButton = this.add.text(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2 + 50, 'Multiplayer', {
@@ -32,6 +33,7 @@ class MainMenuScene extends phaser_1.default.Scene {
         }).setOrigin(0.5).setInteractive().setName('multiplayerButton');
         multiplayerButton.on('pointerdown', () => {
             this.scene.start('Game', { mode: 'multi' });
+            this.sound.play('btn_click');
         });
         // Settings button
         this.settingsButton = this.add.text(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2 + 150, 'Settings', {
@@ -40,6 +42,7 @@ class MainMenuScene extends phaser_1.default.Scene {
         }).setOrigin(0.5).setInteractive().setName('settingsButton');
         this.settingsButton.on('pointerdown', () => {
             this.toggleVolumeControls();
+            this.sound.play('btn_click');
         });
         // Create volume controls (initially hidden)
         this.volumeControls = new VolumeControls_1.VolumeControls(this, constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2 + 50);

@@ -75,7 +75,7 @@ export class SpawnManager {
         // Use the collectible pool from GameScene
         const collectible = (this.scene as any).collectiblePool?.get(texture, collectibleType, value, cx, cy);
         if (collectible) {
-          console.log(`${enemy.config.name} dropped a ${collectibleType} collectible`);
+          // Collectible spawned
         }
       });
       this.activeEnemies.push(enemy);

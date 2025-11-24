@@ -50,7 +50,6 @@ class GameScene extends phaser_1.default.Scene {
             // Initialize network manager for multiplayer
             this.networkManager = new NetworkManager_1.NetworkManager('ws://192.168.110.132:8080');
             this.networkManager.connect().then(() => {
-                console.log('Connected to multiplayer server');
                 this.setupNetworkHandlers();
                 this.networkManager.joinGame();
             }).catch((error) => {
@@ -420,10 +419,8 @@ class GameScene extends phaser_1.default.Scene {
         }
     }
     startBackgroundMusic() {
-        if (this.sound.get('background_music')) {
-            const music = this.sound.add('background_music', { loop: true, volume: 0.5 });
-            music.play();
-        }
+        const music = this.sound.add('background_music', { loop: true, volume: 0.5 });
+        music.play();
     }
     updateSinglePlayer(delta) {
         // Check for player death
@@ -499,24 +496,21 @@ class GameScene extends phaser_1.default.Scene {
         if (!this.networkManager)
             return;
         this.networkManager.onYouJoined((payload) => {
-            console.log('You joined the game with ID:', payload.playerId);
+            // Player joined successfully
         });
         this.networkManager.onGameStateUpdate((payload) => {
             this.handleGameStateUpdate(payload.gameState);
         });
         this.networkManager.onPlayerJoined((payload) => {
-            console.log('Player joined:', payload.player.id);
+            // Another player joined
         });
         this.networkManager.onPlayerLeft((payload) => {
-            console.log('Player left:', payload.playerId);
             this.remotePlayers.delete(payload.playerId);
         });
         this.networkManager.onGameStart((payload) => {
-            console.log('Game started');
             this.waitingText.setText('');
         });
         this.networkManager.onGameEnd((payload) => {
-            console.log('Game ended');
             // Handle game end - show winner
             const winner = payload.winner;
             if (winner) {
@@ -531,7 +525,6 @@ class GameScene extends phaser_1.default.Scene {
             });
         });
         this.networkManager.onPlayerDied((payload) => {
-            console.log('Player died:', payload.playerId);
             // Show death alert
             this.deathAlertText.setText(`${payload.playerId} is dead!`);
             this.deathAlertText.setVisible(true);
@@ -557,9 +550,7 @@ class GameScene extends phaser_1.default.Scene {
             this.player.y = localPlayerData.y;
             // Check for damage taken
             if (localPlayerData.health < this.previousHealth) {
-                if (this.sound.get('enemy_damage')) {
-                    this.sound.play('enemy_damage');
-                }
+                this.sound.play('enemy_damage');
             }
             this.previousHealth = localPlayerData.health;
             this.player.health = localPlayerData.health;
@@ -583,11 +574,9 @@ class GameScene extends phaser_1.default.Scene {
                 dir = 'up';
             }
             if (localPlayerData.currentState === 'attacking') {
-                console.log('Player is attacking, wasAttacking:', this.wasAttacking);
                 this.player.state = types_1.PlayerStateEnum.ATTACKING;
                 this.player.anims.play(`player-attack_${dir}`, true);
                 // Play attack sound if just started attacking
-                console.log('Playing attack sound');
                 this.player.playAttackSound();
             }
             else if (localPlayerData.currentState === 'walking') {
@@ -677,9 +666,7 @@ class GameScene extends phaser_1.default.Scene {
                 remoteEnemy.health = enemyData.health;
                 if (!enemyData.isAlive && remoteEnemy.active) {
                     // Play death sound
-                    if (this.sound.get('enemy_death')) {
-                        this.sound.play('enemy_death');
-                    }
+                    this.sound.play('enemy_death');
                     remoteEnemy.setActive(false);
                     remoteEnemy.setVisible(false);
                 }
@@ -726,8 +713,7 @@ class GameScene extends phaser_1.default.Scene {
             if (!currentCollectibleIds.has(id)) {
                 // Play collection feedback
                 this.cameras.main.flash(200, 255, 255, 255); // White flash
-                    this.sound.play('collectible_pickup');
-
+                this.sound.play('collectible_pickup');
                 // Show collectible message
                 // const message = this.getCollectibleMessage(remoteCollectible.type);
                 // this.collectibleMessageText.setText(message);

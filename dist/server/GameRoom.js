@@ -51,7 +51,6 @@ class GameRoom {
             damageBoostTimer: 0,
             speedBoostTimer: 0
         };
-        console.log(player.id, player.speed, player.direction, player.facingDirection, player.isAttacking);
         this.players.set(playerId, player);
         // Notify the joining player specifically
         this.wsServer.sendToPlayer(playerId, {

@@ -47,10 +47,11 @@ class PreloadScene extends phaser_1.default.Scene {
         this.load.image('ui', 'src/client/scenes/assets/ui.png'); // Placeholder
         // Sounds
         this.load.audio('player_attack', 'player_attack.wav');
-        this.load.audio('enemy_damage', './assets/enemy_damage.wav');
-        this.load.audio('enemy_death', './assets/enemy_death.wav');
-        this.load.audio('collectible_pickup', './assets/collectible_pickup.wav');
-        this.load.audio('background_music', './assets/background_music.mp3');
+        this.load.audio('enemy_damage', 'enemy_damage.wav');
+        this.load.audio('enemy_death', 'enemy_death.mp3');
+        this.load.audio('collectible_pickup', 'pickup.mp3');
+        this.load.audio('background_music', 'background_music.mp3');
+        this.load.audio('btn_click', 'btn_click.mp3');
     }
     create() {
         // Clean up progress bar

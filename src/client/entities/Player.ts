@@ -238,7 +238,6 @@ export class Player extends Phaser.Physics.Matter.Sprite {
       this.facingDirection = { x: 0, y: 1 };
     }
    if(velocityX !== 0 || velocityY !== 0) {
-      console.log('Player is moving');
       this.state = PlayerStateEnum.WALKING;
       this.anims.play(`player-walk_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true); 
    }else if(this.attackKey.isDown) {
@@ -285,7 +284,6 @@ export class Player extends Phaser.Physics.Matter.Sprite {
   }
 
   private attack(): void {
-    console.log('Player attack executed');
     this.state = PlayerStateEnum.ATTACKING;
     this.anims.play(`player-attack_${this.facingDirection.x === 0 ? (this.facingDirection.y === 1 ? 'down' : 'up') : (this.facingDirection.x === 1 ? 'right' : 'left')}`, true);
     this.lastAttackTime = this.scene.time.now;
@@ -354,7 +352,6 @@ export class Player extends Phaser.Physics.Matter.Sprite {
   public playAttackSound(): void {
     const now = this.scene.time.now;
     if (now - this.lastSoundTime > this.soundCooldown) {
-      console.log('Playing player_attack sound');
       this.scene.sound.play('player_attack', { volume: 1 });
       this.lastSoundTime = now;
     }

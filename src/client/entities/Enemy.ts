@@ -264,7 +264,6 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
     } else {
       // Fallback to creating directly
       const collectible = new Collectible(this.scene, this.x, this.y, texture, type, value);
-      console.log(`${this.config.name} dropped a ${type} collectible`);
     }
   }
 

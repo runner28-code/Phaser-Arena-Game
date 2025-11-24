@@ -177,7 +177,6 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
     }
     takeDamage(amount) {
         this.health -= amount;
-        this.playDamageSound();
         if (this.health <= 0) {
             this.die();
         }
@@ -226,18 +225,13 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
         else {
             // Fallback to creating directly
             const collectible = new Collectible_1.Collectible(this.scene, this.x, this.y, texture, type, value);
-            console.log(`${this.config.name} dropped a ${type} collectible`);
         }
     }
     playDamageSound() {
-        if (this.scene.sound.get('enemy_damage')) {
-            this.scene.sound.play('enemy_damage');
-        }
+        this.scene.sound.play('enemy_damage');
     }
     playDeathSound() {
-        if (this.scene.sound.get('enemy_death')) {
-            this.scene.sound.play('enemy_death');
-        }
+        this.scene.sound.play('enemy_death');
     }
     getDirectionString() {
         if (Math.abs(this.facingDirection.x) > Math.abs(this.facingDirection.y)) {

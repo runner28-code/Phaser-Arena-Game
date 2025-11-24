@@ -74,7 +74,6 @@ export class GameScene extends Phaser.Scene {
       // Initialize network manager for multiplayer
       this.networkManager = new NetworkManager('ws://192.168.110.132:8080');
       this.networkManager.connect().then(() => {
-        console.log('Connected to multiplayer server');
         this.setupNetworkHandlers();
         this.networkManager!.joinGame();
       }).catch((error) => {
@@ -576,7 +575,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.networkManager) return;
 
     this.networkManager.onYouJoined((payload) => {
-      console.log('You joined the game with ID:', payload.playerId);
+      // Player joined successfully
     });
 
     this.networkManager.onGameStateUpdate((payload) => {
@@ -584,21 +583,18 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.networkManager.onPlayerJoined((payload) => {
-      console.log('Player joined:', payload.player.id);
+      // Another player joined
     });
 
     this.networkManager.onPlayerLeft((payload) => {
-      console.log('Player left:', payload.playerId);
       this.remotePlayers.delete(payload.playerId);
     });
 
     this.networkManager.onGameStart((payload) => {
-      console.log('Game started');
       this.waitingText.setText('');
     });
 
     this.networkManager.onGameEnd((payload) => {
-      console.log('Game ended');
       // Handle game end - show winner
       const winner = payload.winner;
       if (winner) {
@@ -613,7 +609,6 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.networkManager.onPlayerDied((payload) => {
-      console.log('Player died:', payload.playerId);
       // Show death alert
       this.deathAlertText.setText(`${payload.playerId} is dead!`);
       this.deathAlertText.setVisible(true);
@@ -642,10 +637,9 @@ export class GameScene extends Phaser.Scene {
       this.player.y = localPlayerData.y;
 
       // Check for damage taken
-      // if (localPlayerData.health < this.previousHealth) {
-      //   console.log('Player took damage, playing sound');
-      //     this.sound.play('enemy_damage');   
-      // }
+      if (localPlayerData.health < this.previousHealth) {
+        this.sound.play('enemy_damage');
+      }
       this.previousHealth = localPlayerData.health;
 
       this.player.health = localPlayerData.health;
@@ -668,12 +662,10 @@ export class GameScene extends Phaser.Scene {
       }
 
       if (localPlayerData.currentState === 'attacking') {
-        console.log('Player is attacking, wasAttacking:', this.wasAttacking);
         this.player.state = PlayerStateEnum.ATTACKING;
         this.player.anims.play(`player-attack_${dir}`, true);
         // Play attack sound if just started attacking
-          console.log('Playing attack sound');
-          this.player.playAttackSound();
+        this.player.playAttackSound();
         
       } else if (localPlayerData.currentState === 'walking') {
         this.player.state = PlayerStateEnum.WALKING;
