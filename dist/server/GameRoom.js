@@ -138,14 +138,6 @@ class GameRoom {
             const dx = otherPlayer.x - player.x;
             const dy = otherPlayer.y - player.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            // if (distance < 50) { // attack range
-            //   otherPlayer.health -= player.damage;
-            //   if (otherPlayer.health <= 0) {
-            //     otherPlayer.state = PlayerState.DEAD;
-            //     // Game ends when a player dies
-            //     this.endGame();
-            //   }
-            // }
         }
         // Check for hits on enemies
         for (const [enemyId, enemy] of this.enemies) {
@@ -154,7 +146,7 @@ class GameRoom {
             const dx = enemy.x - player.x;
             const dy = enemy.y - player.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < 50) { // attack range
+            if (distance < 30) { // attack range
                 const effectiveDamage = player.damageBoostTimer > 0 ? player.damage * 1.5 : player.damage;
                 enemy.health -= effectiveDamage;
                 if (enemy.health <= 0) {
@@ -300,7 +292,7 @@ class GameRoom {
                     enemy.y += (dy / distance) * enemy.speed * this.deltaTime;
                 }
                 // Attack if close
-                if (distance < 50) { // attack range
+                if (distance < 30) { // attack range
                     if (nearestPlayer.invulnerableTimer <= 0) { // Only damage if not invulnerable
                         nearestPlayer.health -= enemy.damage;
                         if (nearestPlayer.health <= 0) {

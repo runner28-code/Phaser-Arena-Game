@@ -172,7 +172,7 @@ export class GameRoom {
       const dy = enemy.y - player.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance < 50) { // attack range
+      if (distance < 30) { // attack range
         const effectiveDamage = player.damageBoostTimer > 0 ? player.damage * 1.5 : player.damage;
         enemy.health -= effectiveDamage;
         if (enemy.health <= 0) {
@@ -332,7 +332,7 @@ export class GameRoom {
         }
 
         // Attack if close
-        if (distance < 50) { // attack range
+        if (distance < 30) { // attack range
           if (nearestPlayer.invulnerableTimer <= 0) { // Only damage if not invulnerable
             nearestPlayer.health -= enemy.damage;
             if (nearestPlayer.health <= 0) {

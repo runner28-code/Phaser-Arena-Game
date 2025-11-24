@@ -19,7 +19,7 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
   protected player: any; // Reference to player
   protected attackCooldown: number = 1000;
   protected lastAttackTime: number = 0;
-  protected attackRange: number = 50;
+  protected attackRange: number = 30;
   protected isAlive: boolean = true;
 
   getIsAlive(): boolean {
@@ -285,11 +285,13 @@ export abstract class Enemy extends Phaser.Physics.Matter.Sprite {
   }
 
   public reset(): void {
-    this.x = 0;
-    this.y = 0;
+    if (this.body) {
+      this.x = 0;
+      this.y = 0;
+      this.setVelocity(0, 0);
+    }
     this.health = this.maxHealth;
     this.isAlive = true;
-    this.setVelocity(0, 0);
     this.setActive(false);
     this.setVisible(false);
   }

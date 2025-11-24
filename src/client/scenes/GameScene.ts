@@ -19,7 +19,6 @@ export class GameScene extends Phaser.Scene {
     private remoteCollectibles: Map<string, Collectible> = new Map();
     private spawnManager?: SpawnManager; // Only used in single player
     private waveText?: Phaser.GameObjects.Text;
-    private buffTexts: Phaser.GameObjects.Text[] = [];
     private upgradeTexts: Phaser.GameObjects.Text[] = [];
     private gameTimer: number = 0;
     private uiContainer!: Phaser.GameObjects.Container;
@@ -31,11 +30,9 @@ export class GameScene extends Phaser.Scene {
     private playerCountText!: Phaser.GameObjects.Text;
     private waitingText!: Phaser.GameObjects.Text;
     private deathAlertText!: Phaser.GameObjects.Text;
-    private collectibleMessageText!: Phaser.GameObjects.Text;
     private shieldText!: Phaser.GameObjects.Text;
     private damageBoostText!: Phaser.GameObjects.Text;
     private speedBoostText!: Phaser.GameObjects.Text;
-    private wasAttacking: boolean = false;
     private previousHealth: number = 0;
 
     // Object pools for single-player performance optimization
@@ -87,81 +84,38 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Create waiting text (for multiplayer)
-    this.waitingText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
-      fontSize: '32px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-    this.uiContainer.add(this.waitingText);
+    this.waitingText = this.createUIText(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', 32).setOrigin(0.5);
 
     // Create player count text (for multiplayer)
-    this.playerCountText = this.add.text(10, 70, 'Players: 1', {
-      fontSize: '24px',
-      color: '#ffffff'
-    });
-    this.uiContainer.add(this.playerCountText);
+    this.playerCountText = this.createUIText(10, 70, 'Players: 1');
 
     // Create death alert text (for multiplayer)
-    this.deathAlertText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, '', {
-      fontSize: '32px',
-      color: '#ff0000'
-    }).setOrigin(0.5);
+    this.deathAlertText = this.createUIText(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, '', 32, '#ff0000').setOrigin(0.5);
     this.deathAlertText.setVisible(false);
-    this.uiContainer.add(this.deathAlertText);
 
-    // Create collectible message text (for multiplayer)
-    this.collectibleMessageText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50, '', {
-      fontSize: '24px',
-      color: '#00ff00'
-    }).setOrigin(0.5);
-    this.collectibleMessageText.setVisible(false);
-    this.uiContainer.add(this.collectibleMessageText);
 
     // Create buff timer texts (for single-player)
     const xPosition = GAME_WIDTH - 220;
-    this.shieldText = this.add.text(xPosition, 70, '', {
-      fontSize: '20px',
-      color: '#0000ff'
-    });
+    this.shieldText = this.createUIText(xPosition, 70, '', 20, '#0000ff');
     this.shieldText.setVisible(false);
-    this.uiContainer.add(this.shieldText);
 
-    this.damageBoostText = this.add.text(xPosition, 95, '', {
-      fontSize: '20px',
-      color: '#ff0000'
-    });
+    this.damageBoostText = this.createUIText(xPosition, 95, '', 20, '#ff0000');
     this.damageBoostText.setVisible(false);
-    this.uiContainer.add(this.damageBoostText);
 
-    this.speedBoostText = this.add.text(xPosition, 120, '', {
-      fontSize: '20px',
-      color: '#ffff00'
-    });
+    this.speedBoostText = this.createUIText(xPosition, 120, '', 20, '#ffff00');
     this.speedBoostText.setVisible(false);
-    this.uiContainer.add(this.speedBoostText);
 
     // Create health bar
     this.createHealthBar();
 
     // Create score display
-    this.scoreText = this.add.text(GAME_WIDTH - 10, 10, `Score: ${this.player.score}`, {
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setOrigin(1, 0);
-    this.uiContainer.add(this.scoreText);
+    this.scoreText = this.createUIText(GAME_WIDTH - 10, 10, `Score: ${this.player.score}`).setOrigin(1, 0);
 
     // Create timer display
-    this.timerText = this.add.text(GAME_WIDTH / 2, 10, `Time: 0.0s`, {
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setOrigin(0.5, 0);
-    this.uiContainer.add(this.timerText);
+    this.timerText = this.createUIText(GAME_WIDTH / 2, 10, `Time: 0.0s`).setOrigin(0.5, 0);
 
     // Add mode text
-    const modeText = this.add.text(10, 10, `Mode: ${this.mode}`, {
-      fontSize: '24px',
-      color: '#ffffff'
-    });
-    this.uiContainer.add(modeText);
+    this.createUIText(10, 10, `Mode: ${this.mode}`);
 
     // Start background music
     this.startBackgroundMusic();
@@ -191,6 +145,15 @@ export class GameScene extends Phaser.Scene {
       isStatic: true,
       collisionFilter: { category: COLLISION_CATEGORY_OBSTACLE }
     });
+  }
+
+  private createUIText(x: number, y: number, text: string, fontSize: number = 24, color: string = '#ffffff'): Phaser.GameObjects.Text {
+    const uiText = this.add.text(x, y, text, {
+      fontSize: `${fontSize}px`,
+      color: color
+    });
+    this.uiContainer.add(uiText);
+    return uiText;
   }
 
   private createHealthBar(): void {
@@ -353,11 +316,7 @@ export class GameScene extends Phaser.Scene {
     this.spawnManager.startWave();
 
     // Add wave text for single player
-    this.waveText = this.add.text(10, 40, `Wave: 1`, {
-      fontSize: '24px',
-      color: '#ffffff'
-    });
-    this.uiContainer.add(this.waveText);
+    this.waveText = this.createUIText(10, 40, `Wave: 1`);
 
     // Initialize upgrade UI
     this.updateUpgradeUI();
@@ -544,7 +503,7 @@ export class GameScene extends Phaser.Scene {
     this.scoreText.setText(`Score: ${this.player.score}`);
   }
 
-  private getPlayerInputDirection(): { x: number; y: number } {
+  private getDirectionFromInput(): { x: number; y: number } {
     let x = 0;
     let y = 0;
     const cursors = this.input.keyboard!.createCursorKeys();
@@ -561,6 +520,17 @@ export class GameScene extends Phaser.Scene {
     if (cursors.down.isDown || wasd.down.isDown) y = 1;
 
     return { x, y };
+  }
+
+  private getDirectionString(facingDirection: { x: number; y: number }): string {
+    if (facingDirection.x > 0) return 'right';
+    if (facingDirection.x < 0) return 'left';
+    if (facingDirection.y > 0) return 'down';
+    return 'up';
+  }
+
+  private getPlayerInputDirection(): { x: number; y: number } {
+    return this.getDirectionFromInput();
   }
 
   private getPlayerAction(): string | undefined {
@@ -650,16 +620,7 @@ export class GameScene extends Phaser.Scene {
       this.player.setLastAttackTime(localPlayerData.lastAttackTime);
 
       // Update animation based on current state
-      let dir = 'down'; // default
-      if (localPlayerData.facingDirection.x > 0) {
-        dir = 'right';
-      } else if (localPlayerData.facingDirection.x < 0) {
-        dir = 'left';
-      } else if (localPlayerData.facingDirection.y > 0) {
-        dir = 'down';
-      } else if (localPlayerData.facingDirection.y < 0) {
-        dir = 'up';
-      }
+      const dir = this.getDirectionString(localPlayerData.facingDirection);
 
       if (localPlayerData.currentState === 'attacking') {
         this.player.state = PlayerStateEnum.ATTACKING;
@@ -675,8 +636,6 @@ export class GameScene extends Phaser.Scene {
         this.player.anims.play(`player-idle_${dir}`, true);
       }
 
-      // Update attack state tracker
-      this.wasAttacking = localPlayerData.currentState === 'attacking';
 
       // Handle death
       if (localPlayerData.state === PlayerState.DEAD && this.player.health > 0) {
@@ -770,12 +729,7 @@ export class GameScene extends Phaser.Scene {
           remoteEnemy.setVisible(false);
         } else if (enemyData.isAlive) {
           // Play walk animation based on facing direction
-          let dir = 'down';
-          if (Math.abs(enemyData.facingDirection.x) > Math.abs(enemyData.facingDirection.y)) {
-            dir = enemyData.facingDirection.x > 0 ? 'right' : 'left';
-          } else {
-            dir = enemyData.facingDirection.y > 0 ? 'down' : 'up';
-          }
+          const dir = this.getDirectionString(enemyData.facingDirection);
           remoteEnemy.anims.play(`${enemyData.type}_walk_${dir}`, true);
         }
       }
@@ -814,17 +768,7 @@ export class GameScene extends Phaser.Scene {
       if (!currentCollectibleIds.has(id)) {
         // Play collection feedback
         this.cameras.main.flash(200, 255, 255, 255); // White flash
-          this.sound.play('collectible_pickup');
-        
-
-        // Show collectible message
-        // const message = this.getCollectibleMessage(remoteCollectible.type);
-        // this.collectibleMessageText.setText(message);
-        // this.collectibleMessageText.setVisible(true);
-        // Hide after 2 seconds
-        this.time.delayedCall(2000, () => {
-          this.collectibleMessageText.setVisible(false);
-        });
+        this.sound.play('collectible_pickup');
 
         remoteCollectible.destroy();
         this.remoteCollectibles.delete(id);
@@ -849,33 +793,13 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private getCollectibleMessage(type: CollectibleEnum): string {
-    switch (type) {
-      case CollectibleEnum.HEALTH:
-        return 'Picked up Health Potion!';
-      case CollectibleEnum.SHIELD:
-        return 'Picked up Shield! (5s invulnerability)';
-      case CollectibleEnum.DAMAGE_BOOST:
-        return 'Picked up Damage Boost! (10s)';
-      case CollectibleEnum.SPEED_BOOST:
-        return 'Picked up Speed Boost! (10s)';
-      case CollectibleEnum.COIN:
-        return 'Picked up Coin!';
-      default:
-        return 'Picked up Collectible!';
-    }
-  }
 
   private updateUIFromServer(gameState: GameStateData) {
     this.playerCountText.setText(`Players: ${gameState.players.length}`);
 
     // Update wave text
     if (!this.waveText) {
-      this.waveText = this.add.text(10, 40, `Wave: ${gameState.wave}`, {
-        fontSize: '24px',
-        color: '#ffffff'
-      });
-      this.uiContainer.add(this.waveText);
+      this.waveText = this.createUIText(10, 40, `Wave: ${gameState.wave}`);
     } else {
       this.waveText.setText(`Wave: ${gameState.wave}`);
     }

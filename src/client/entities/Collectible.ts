@@ -103,8 +103,10 @@ export class Collectible extends Phaser.Physics.Matter.Sprite {
   }
 
   public reset(): void {
-    this.x = 0;
-    this.y = 0;
+    if (this.body) {
+      this.x = 0;
+      this.y = 0;
+    }
     this.setActive(false);
     this.setVisible(false);
   }

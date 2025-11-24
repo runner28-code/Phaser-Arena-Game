@@ -242,11 +242,13 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
         }
     }
     reset() {
-        this.x = 0;
-        this.y = 0;
+        if (this.body) {
+            this.x = 0;
+            this.y = 0;
+            this.setVelocity(0, 0);
+        }
         this.health = this.maxHealth;
         this.isAlive = true;
-        this.setVelocity(0, 0);
         this.setActive(false);
         this.setVisible(false);
     }
