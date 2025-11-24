@@ -18,7 +18,7 @@ export class GameScene extends Phaser.Scene {
     private remoteEnemies: Map<string, Enemy> = new Map();
     private remoteCollectibles: Map<string, Collectible> = new Map();
     private spawnManager?: SpawnManager; // Only used in single player
-    private waveText!: Phaser.GameObjects.Text;
+    private waveText?: Phaser.GameObjects.Text;
     private buffTexts: Phaser.GameObjects.Text[] = [];
     private upgradeTexts: Phaser.GameObjects.Text[] = [];
     private gameTimer: number = 0;
@@ -30,6 +30,7 @@ export class GameScene extends Phaser.Scene {
     private timerText!: Phaser.GameObjects.Text;
     private playerCountText!: Phaser.GameObjects.Text;
     private waitingText!: Phaser.GameObjects.Text;
+    private deathAlertText!: Phaser.GameObjects.Text;
 
     // Object pools for single-player performance optimization
     private enemyPool!: ObjectPool<Enemy>;
@@ -93,6 +94,14 @@ export class GameScene extends Phaser.Scene {
       color: '#ffffff'
     });
     this.uiContainer.add(this.playerCountText);
+
+    // Create death alert text (for multiplayer)
+    this.deathAlertText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, '', {
+      fontSize: '32px',
+      color: '#ff0000'
+    }).setOrigin(0.5);
+    this.deathAlertText.setVisible(false);
+    this.uiContainer.add(this.deathAlertText);
 
     // Create health bar
     this.createHealthBar();
@@ -451,7 +460,7 @@ export class GameScene extends Phaser.Scene {
     this.updateHealthBar();
     this.scoreText.setText(`Score: ${this.player.score}`);
     this.timerText.setText(`Time: ${(this.gameTimer / 1000).toFixed(1)}s`);
-    if (this.spawnManager) {
+    if (this.waveText && this.spawnManager) {
       this.waveText.setText(`Wave: ${this.spawnManager.getCurrentWave()}`);
     }
     this.updateBuffUI();
@@ -542,6 +551,17 @@ export class GameScene extends Phaser.Scene {
       // Return to menu after a delay
       this.time.delayedCall(3000, () => {
         this.scene.start('MainMenu');
+      });
+    });
+
+    this.networkManager.onPlayerDied((payload) => {
+      console.log('Player died:', payload.playerId);
+      // Show death alert
+      this.deathAlertText.setText(`${payload.playerId} is dead!`);
+      this.deathAlertText.setVisible(true);
+      // Hide after 3 seconds
+      this.time.delayedCall(3000, () => {
+        this.deathAlertText.setVisible(false);
       });
     });
   }
@@ -638,8 +658,17 @@ export class GameScene extends Phaser.Scene {
         this.remotePlayers.set(playerData.id, remotePlayer);
       }
 
-      if (remotePlayer && remotePlayer.body) {
-        remotePlayer.update(16.67, playerData); // Assume 60 FPS delta
+      if (remotePlayer) {
+        if (playerData.state === PlayerState.DEAD) {
+          remotePlayer.setActive(false);
+          remotePlayer.setVisible(false);
+        } else {
+          remotePlayer.setActive(true);
+          remotePlayer.setVisible(true);
+          if (remotePlayer.body) {
+            remotePlayer.update(16.67, playerData); // Assume 60 FPS delta
+          }
+        }
       }
     });
 
@@ -724,6 +753,17 @@ export class GameScene extends Phaser.Scene {
 
   private updateUIFromServer(gameState: GameStateData) {
     this.playerCountText.setText(`Players: ${gameState.players.length}`);
+
+    // Update wave text
+    if (!this.waveText) {
+      this.waveText = this.add.text(10, 40, `Wave: ${gameState.wave}`, {
+        fontSize: '24px',
+        color: '#ffffff'
+      });
+      this.uiContainer.add(this.waveText);
+    } else {
+      this.waveText.setText(`Wave: ${gameState.wave}`);
+    }
 
     if (gameState.state === GameState.WAITING) {
       this.waitingText.setText('Waiting for another player...');

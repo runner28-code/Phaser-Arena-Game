@@ -165,6 +165,9 @@ class NetworkManager {
     onGameEnd(handler) {
         this.messageHandlers.set(index_1.MessageType.GAME_END, handler);
     }
+    onPlayerDied(handler) {
+        this.messageHandlers.set(index_1.MessageType.PLAYER_DIED, handler);
+    }
     // State interpolation
     getInterpolatedState() {
         if (!this.currentState)

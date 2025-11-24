@@ -1,4 +1,4 @@
-import { GameMessage, MessageType, GameStateUpdatePayload, PlayerJoinedPayload, PlayerLeftPayload, YouJoinedPayload, GameStartPayload, GameEndPayload, PlayerInputPayload, JoinGamePayload } from '../../shared/types/index';
+import { GameMessage, MessageType, GameStateUpdatePayload, PlayerJoinedPayload, PlayerLeftPayload, PlayerDiedPayload, YouJoinedPayload, GameStartPayload, GameEndPayload, PlayerInputPayload, JoinGamePayload } from '../../shared/types/index';
 
 // @ts-ignore
 import * as msgpack from 'msgpack-lite';
@@ -147,6 +147,10 @@ export class NetworkManager {
 
   onGameEnd(handler: (payload: GameEndPayload) => void) {
     this.messageHandlers.set(MessageType.GAME_END, handler);
+  }
+
+  onPlayerDied(handler: (payload: PlayerDiedPayload) => void) {
+    this.messageHandlers.set(MessageType.PLAYER_DIED, handler);
   }
 
   // State interpolation

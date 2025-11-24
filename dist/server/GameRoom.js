@@ -19,6 +19,8 @@ class GameRoom {
         this.enemySpawnTimer = 0;
         this.nextEnemyId = 0;
         this.nextCollectibleId = 0;
+        this.currentWave = 1;
+        this.waveCleared = false;
         this.wsServer = wsServer;
     }
     canJoin() {
@@ -167,6 +169,8 @@ class GameRoom {
     startGame() {
         this.gameState = index_1.GameState.PLAYING;
         this.gameTime = 0;
+        this.currentWave = 1;
+        this.startWave();
         this.wsServer.notifyGameStart();
     }
     endGame() {
@@ -180,13 +184,14 @@ class GameRoom {
         this.updatePlayers();
         this.updateEnemies();
         this.updateCollectibles();
-        // Spawn enemies periodically
-        this.enemySpawnTimer += this.deltaTime;
-        if (this.enemySpawnTimer >= 5) { // Spawn every 5 seconds
-            this.enemySpawnTimer = 0;
-            if (this.enemies.size < 5) { // Max 5 enemies
-                this.spawnEnemy();
-            }
+        // Check for wave completion
+        if (!this.waveCleared && this.enemies.size === 0) {
+            this.waveCleared = true;
+            this.currentWave++;
+            // Start next wave after a short delay
+            setTimeout(() => {
+                this.startWave();
+            }, 2000); // 2 second delay between waves
         }
     }
     updatePlayers() {
@@ -210,19 +215,32 @@ class GameRoom {
         const config = enemies_json_1.default.find(e => e.id === randomType);
         if (!config)
             return;
+        // Scale enemy stats based on wave
+        const waveMultiplier = 1 + (this.currentWave - 1) * 0.05; // 5% increase per wave
+        const health = Math.floor(config.health * waveMultiplier);
+        const damage = Math.floor(config.damage * waveMultiplier);
+        const speed = config.speed * Math.min(1 + (this.currentWave - 1) * 0.05, 2.0); // Max 2x speed
         const enemy = {
             id: `enemy_${this.nextEnemyId++}`,
             x: Math.random() * constants_1.GAME_WIDTH,
             y: Math.random() * constants_1.GAME_HEIGHT,
-            health: config.health,
-            maxHealth: config.health,
-            speed: config.speed,
-            damage: config.damage,
+            health: health,
+            maxHealth: health,
+            speed: speed,
+            damage: damage,
             type: randomType,
             isAlive: true,
             facingDirection: { x: 1, y: 0 }
         };
         this.enemies.set(enemy.id, enemy);
+    }
+    startWave() {
+        this.waveCleared = false;
+        const baseEnemies = 3; // Base number of enemies
+        const waveEnemies = baseEnemies + Math.floor((this.currentWave - 1) / 2); // +1 enemy every 2 waves
+        for (let i = 0; i < waveEnemies; i++) {
+            this.spawnEnemy();
+        }
     }
     updateEnemies() {
         for (const [enemyId, enemy] of this.enemies) {
@@ -259,11 +277,16 @@ class GameRoom {
                 // Attack if close
                 if (distance < 50) { // attack range
                     nearestPlayer.health -= enemy.damage;
-                    // if (nearestPlayer.health <= 0) {
-                    //   nearestPlayer.state = PlayerState.DEAD;
-                    //   // Game ends when a player dies
-                    //   this.endGame();
-                    // }
+                    if (nearestPlayer.health <= 0) {
+                        nearestPlayer.state = index_1.PlayerState.DEAD;
+                        // Notify all players that this player died
+                        this.wsServer.notifyPlayerDied(nearestPlayer.id);
+                        // Check if all players are dead
+                        const livingPlayers = Array.from(this.players.values()).filter(p => p.state !== index_1.PlayerState.DEAD);
+                        if (livingPlayers.length === 0) {
+                            this.endGame();
+                        }
+                    }
                 }
             }
         }
@@ -314,14 +337,14 @@ class GameRoom {
             enemies: Array.from(this.enemies.values()),
             collectibles: Array.from(this.collectibles.values()),
             state: this.gameState,
-            wave: 1, // Always wave 1
+            wave: this.currentWave,
             gameTime: this.gameTime
         };
     }
     getFinalScores() {
         return Array.from(this.players.values()).map(player => ({
             playerId: player.id,
-            score: player.state === index_1.PlayerState.ALIVE ? 1 : 0 // 1 point for surviving
+            score: player.score
         }));
     }
 }

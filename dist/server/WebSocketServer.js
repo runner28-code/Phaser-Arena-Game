@@ -145,6 +145,14 @@ class WebSocketServer {
         };
         this.broadcastToAll(message);
     }
+    notifyPlayerDied(playerId) {
+        const payload = { playerId };
+        const message = {
+            type: index_1.MessageType.PLAYER_DIED,
+            data: payload
+        };
+        this.broadcastToAll(message);
+    }
     notifyGameStart() {
         const gameState = this.gameRoom.getGameState();
         const payload = { gameState };

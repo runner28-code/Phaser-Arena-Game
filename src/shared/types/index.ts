@@ -11,6 +11,7 @@ export enum MessageType {
    GAME_STATE_UPDATE = 'GAME_STATE_UPDATE',
    PLAYER_JOINED = 'PLAYER_JOINED',
    PLAYER_LEFT = 'PLAYER_LEFT',
+   PLAYER_DIED = 'PLAYER_DIED',
    YOU_JOINED = 'YOU_JOINED',
    GAME_START = 'GAME_START',
    GAME_END = 'GAME_END',
@@ -110,6 +111,10 @@ export interface PlayerJoinedPayload {
 }
 
 export interface PlayerLeftPayload {
+   playerId: string;
+}
+
+export interface PlayerDiedPayload {
    playerId: string;
 }
 

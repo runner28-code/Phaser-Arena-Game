@@ -73,6 +73,13 @@ class GameScene extends phaser_1.default.Scene {
             color: '#ffffff'
         });
         this.uiContainer.add(this.playerCountText);
+        // Create death alert text (for multiplayer)
+        this.deathAlertText = this.add.text(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2 - 50, '', {
+            fontSize: '32px',
+            color: '#ff0000'
+        }).setOrigin(0.5);
+        this.deathAlertText.setVisible(false);
+        this.uiContainer.add(this.deathAlertText);
         // Create health bar
         this.createHealthBar();
         // Create score display
@@ -382,7 +389,7 @@ class GameScene extends phaser_1.default.Scene {
         this.updateHealthBar();
         this.scoreText.setText(`Score: ${this.player.score}`);
         this.timerText.setText(`Time: ${(this.gameTimer / 1000).toFixed(1)}s`);
-        if (this.spawnManager) {
+        if (this.waveText && this.spawnManager) {
             this.waveText.setText(`Wave: ${this.spawnManager.getCurrentWave()}`);
         }
         this.updateBuffUI();
@@ -463,6 +470,16 @@ class GameScene extends phaser_1.default.Scene {
             // Return to menu after a delay
             this.time.delayedCall(3000, () => {
                 this.scene.start('MainMenu');
+            });
+        });
+        this.networkManager.onPlayerDied((payload) => {
+            console.log('Player died:', payload.playerId);
+            // Show death alert
+            this.deathAlertText.setText(`${payload.playerId} is dead!`);
+            this.deathAlertText.setVisible(true);
+            // Hide after 3 seconds
+            this.time.delayedCall(3000, () => {
+                this.deathAlertText.setVisible(false);
             });
         });
     }
@@ -549,8 +566,18 @@ class GameScene extends phaser_1.default.Scene {
                 remotePlayer.setPlayerId(playerData.id);
                 this.remotePlayers.set(playerData.id, remotePlayer);
             }
-            if (remotePlayer && remotePlayer.body) {
-                remotePlayer.update(16.67, playerData); // Assume 60 FPS delta
+            if (remotePlayer) {
+                if (playerData.state === types_1.PlayerState.DEAD) {
+                    remotePlayer.setActive(false);
+                    remotePlayer.setVisible(false);
+                }
+                else {
+                    remotePlayer.setActive(true);
+                    remotePlayer.setVisible(true);
+                    if (remotePlayer.body) {
+                        remotePlayer.update(16.67, playerData); // Assume 60 FPS delta
+                    }
+                }
             }
         });
         // Remove disconnected players
@@ -629,6 +656,17 @@ class GameScene extends phaser_1.default.Scene {
     }
     updateUIFromServer(gameState) {
         this.playerCountText.setText(`Players: ${gameState.players.length}`);
+        // Update wave text
+        if (!this.waveText) {
+            this.waveText = this.add.text(10, 40, `Wave: ${gameState.wave}`, {
+                fontSize: '24px',
+                color: '#ffffff'
+            });
+            this.uiContainer.add(this.waveText);
+        }
+        else {
+            this.waveText.setText(`Wave: ${gameState.wave}`);
+        }
         if (gameState.state === types_1.GameState.WAITING) {
             this.waitingText.setText('Waiting for another player...');
         }

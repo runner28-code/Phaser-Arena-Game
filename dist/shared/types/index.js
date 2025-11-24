@@ -13,6 +13,7 @@ var MessageType;
     MessageType["GAME_STATE_UPDATE"] = "GAME_STATE_UPDATE";
     MessageType["PLAYER_JOINED"] = "PLAYER_JOINED";
     MessageType["PLAYER_LEFT"] = "PLAYER_LEFT";
+    MessageType["PLAYER_DIED"] = "PLAYER_DIED";
     MessageType["YOU_JOINED"] = "YOU_JOINED";
     MessageType["GAME_START"] = "GAME_START";
     MessageType["GAME_END"] = "GAME_END";

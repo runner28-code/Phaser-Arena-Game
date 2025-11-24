@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import * as msgpack from 'msgpack-lite';
-import { GameMessage, MessageType, GameStateUpdatePayload, PlayerJoinedPayload, PlayerLeftPayload, GameStartPayload, GameEndPayload } from '../shared/types/index';
+import { GameMessage, MessageType, GameStateUpdatePayload, PlayerJoinedPayload, PlayerLeftPayload, PlayerDiedPayload, GameStartPayload, GameEndPayload } from '../shared/types/index';
 import { UPDATE_RATE } from '../shared/config/constants';
 import { GameRoom } from './GameRoom';
 
@@ -123,6 +123,15 @@ export class WebSocketServer {
     const payload: PlayerLeftPayload = { playerId };
     const message: GameMessage = {
       type: MessageType.PLAYER_LEFT,
+      data: payload
+    };
+    this.broadcastToAll(message);
+  }
+
+  notifyPlayerDied(playerId: string) {
+    const payload: PlayerDiedPayload = { playerId };
+    const message: GameMessage = {
+      type: MessageType.PLAYER_DIED,
       data: payload
     };
     this.broadcastToAll(message);
