@@ -65,6 +65,7 @@ export interface EnemyData {
      damage: number;
      type: EnemyType;
      isAlive: boolean;
+     isAttacking: boolean;
      facingDirection: { x: number; y: number };
 }
 

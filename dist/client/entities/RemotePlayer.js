@@ -5,6 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RemotePlayer = void 0;
 const phaser_1 = __importDefault(require("phaser"));
+/**
+ * Represents a remote player in multiplayer mode.
+ * Displays other players' positions, animations, and states synchronized from the server.
+ */
 class RemotePlayer extends phaser_1.default.Physics.Matter.Sprite {
     constructor(scene, x, y, texture) {
         super(scene.matter.world, x, y, texture);
@@ -108,12 +112,25 @@ class RemotePlayer extends phaser_1.default.Physics.Matter.Sprite {
             repeat: 0
         });
     }
+    /**
+     * Sets the unique identifier for this remote player.
+     * @param id - The player's unique ID
+     */
     setPlayerId(id) {
         this.playerId = id;
     }
+    /**
+     * Gets the unique identifier for this remote player.
+     * @returns The player's unique ID
+     */
     getPlayerId() {
         return this.playerId;
     }
+    /**
+     * Updates the remote player's position and animation based on server data.
+     * @param delta - Time elapsed since last update
+     * @param playerData - Current player state from server
+     */
     update(delta, playerData) {
         // Update position
         this.x = playerData.x;

@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { PlayerData } from '../../shared/types';
 
+/**
+ * Represents a remote player in multiplayer mode.
+ * Displays other players' positions, animations, and states synchronized from the server.
+ */
 export class RemotePlayer extends Phaser.Physics.Matter.Sprite {
   private playerId: string = '';
   private lastUpdateTime: number = 0;
@@ -124,14 +128,27 @@ export class RemotePlayer extends Phaser.Physics.Matter.Sprite {
     });
   }
 
+  /**
+   * Sets the unique identifier for this remote player.
+   * @param id - The player's unique ID
+   */
   setPlayerId(id: string): void {
     this.playerId = id;
   }
 
+  /**
+   * Gets the unique identifier for this remote player.
+   * @returns The player's unique ID
+   */
   getPlayerId(): string {
     return this.playerId;
   }
 
+  /**
+   * Updates the remote player's position and animation based on server data.
+   * @param delta - Time elapsed since last update
+   * @param playerData - Current player state from server
+   */
   update(delta: number, playerData: PlayerData): void {
     // Update position
     this.x = playerData.x;

@@ -6,6 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SpawnManager = void 0;
 const phaser_1 = __importDefault(require("phaser"));
 const constants_1 = require("../../shared/config/constants");
+/**
+ * Manages enemy spawning and wave progression in single-player mode.
+ * Handles enemy lifecycle, difficulty scaling, and collectible drops.
+ */
 class SpawnManager {
     constructor(scene, player, enemyPool, onLevelUp) {
         this.currentWave = 1;
@@ -25,6 +29,10 @@ class SpawnManager {
             { x: constants_1.GAME_WIDTH / 2, y: constants_1.GAME_HEIGHT }
         ];
     }
+    /**
+     * Starts a new enemy wave with the current wave's enemy types and count.
+     * Spawns enemies at random edge positions around the arena.
+     */
     startWave() {
         this.waveInProgress = true;
         const enemyTypes = this.getEnemyTypesForWave();
@@ -78,6 +86,11 @@ class SpawnManager {
             enemy.damage *= scaleFactor;
         }
     }
+    /**
+     * Updates all active enemies and handles enemy lifecycle.
+     * Removes dead enemies and releases them back to the object pool.
+     * @param delta - Time elapsed since last update
+     */
     update(delta) {
         if (this.waveInProgress) {
             // Filter out dead enemies and release them back to pool
@@ -112,9 +125,17 @@ class SpawnManager {
             });
         }
     }
+    /**
+     * Gets the current wave number.
+     * @returns The current wave number (starting from 1)
+     */
     getCurrentWave() {
         return this.currentWave;
     }
+    /**
+     * Checks if a wave is currently in progress.
+     * @returns True if enemies are still active, false if wave is complete
+     */
     isWaveInProgress() {
         return this.waveInProgress;
     }

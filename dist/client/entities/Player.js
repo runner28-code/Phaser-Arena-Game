@@ -7,6 +7,10 @@ exports.Player = void 0;
 const phaser_1 = __importDefault(require("phaser"));
 const constants_1 = require("../../shared/config/constants");
 const types_1 = require("../../shared/types");
+/**
+ * Represents the player character in the game.
+ * Handles movement, combat, upgrades, and various player mechanics.
+ */
 class Player extends phaser_1.default.Physics.Matter.Sprite {
     constructor(scene, x, y, texture_idle) {
         super(scene.matter.world, x, y, texture_idle);
@@ -290,6 +294,10 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
             this.lastSoundTime = now;
         }
     }
+    /**
+     * Applies damage to the player, considering invulnerability.
+     * @param amount - The amount of damage to apply
+     */
     takeDamage(amount) {
         if (this.invulnerable)
             return;
@@ -299,20 +307,40 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
             this.die();
         }
     }
+    /**
+     * Heals the player by the specified amount, up to maximum health.
+     * @param amount - The amount of health to restore
+     */
     heal(amount) {
         this.health = Math.min(this.health + amount, this.maxHealth);
     }
+    /**
+     * Adds score to the player's total.
+     * @param amount - The score amount to add
+     */
     addScore(amount) {
         this.score += amount;
     }
+    /**
+     * Applies a shield buff that makes the player invulnerable.
+     * @param duration - Duration of the shield in seconds
+     */
     applyShield(duration) {
         this.invulnerable = true;
         this.invulnerableTimer = duration * 1000; // Convert to milliseconds
     }
+    /**
+     * Applies a damage boost buff that increases attack damage.
+     * @param duration - Duration of the damage boost in seconds
+     */
     applyDamageBoost(duration) {
         this.damageMultiplier = 1.5;
         this.damageBoostTimer = duration * 1000;
     }
+    /**
+     * Applies a speed boost buff that increases movement speed.
+     * @param duration - Duration of the speed boost in seconds
+     */
     applySpeedBoost(duration) {
         this.speedMultiplier = 1.5;
         this.speedBoostTimer = duration * 1000;
@@ -332,6 +360,10 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
         // Apply damage upgrade: +5 damage per level
         this.damage = constants_1.PLAYER_DAMAGE + (this.upgrades.damageLevel * 5);
     }
+    /**
+     * Applies an upgrade to the player, increasing the corresponding stat.
+     * @param upgradeType - The type of upgrade to apply
+     */
     applyUpgrade(upgradeType) {
         switch (upgradeType) {
             case types_1.UpgradeType.DAMAGE:
@@ -346,9 +378,17 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
         }
         this.applyUpgradeBonuses();
     }
+    /**
+     * Gets the current upgrade levels for the player.
+     * @returns A copy of the player's upgrade levels
+     */
     getUpgrades() {
         return { ...this.upgrades };
     }
+    /**
+     * Gets the remaining time for active buffs in seconds.
+     * @returns Object containing remaining time for each buff type
+     */
     getBuffTimers() {
         return {
             invulnerable: Math.max(0, this.invulnerableTimer / 1000),
@@ -356,17 +396,31 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
             speedBoost: Math.max(0, this.speedBoostTimer / 1000)
         };
     }
-    // Public method for multiplayer attack handling
+    /**
+     * Checks if the player can perform an attack based on cooldown.
+     * @returns True if the player can attack, false otherwise
+     */
     canAttack() {
         return this.scene.time.now - this.lastAttackTime > this.attackCooldown;
     }
+    /**
+     * Performs an attack action, updating the last attack time.
+     */
     performAttack() {
         this.lastAttackTime = this.scene.time.now;
         this.attack();
     }
+    /**
+     * Gets the timestamp of the player's last attack.
+     * @returns The last attack time in milliseconds
+     */
     getLastAttackTime() {
         return this.lastAttackTime;
     }
+    /**
+     * Sets the timestamp of the player's last attack.
+     * @param time - The attack time to set in milliseconds
+     */
     setLastAttackTime(time) {
         this.lastAttackTime = time;
     }

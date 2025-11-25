@@ -158,12 +158,18 @@ export class NetworkManager {
     if (!this.currentState) return null;
     if (!this.previousState) return this.currentState;
 
+    // Use conservative lerp factor to prevent overshooting and maintain server authority
+    // Too aggressive interpolation can cause rubber-banding effects
     const LERP_FACTOR = 0.3;
+
     const now = Date.now();
     const timeSinceUpdate = now - this.stateTimestamp;
-    const interpolationFactor = Math.min(timeSinceUpdate / (1000 / 20), 1); // Cap at 20Hz
+    // Cap interpolation time to prevent large jumps during network hiccups
+    // 20Hz server updates = 50ms between updates
+    const interpolationFactor = Math.min(timeSinceUpdate / (1000 / 20), 1);
 
-    // Interpolate player positions
+    // Smooth position transitions between server updates to hide network latency
+    // Only interpolate positions, not other state to maintain server authority on combat
     const interpolatedPlayers = this.currentState.players.map((currentPlayer: any) => {
       const previousPlayer = this.previousState.players.find((p: any) => p.id === currentPlayer.id);
       if (!previousPlayer) return currentPlayer;

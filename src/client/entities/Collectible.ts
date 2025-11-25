@@ -2,6 +2,10 @@ import Phaser from 'phaser';
 import { COLLISION_CATEGORY_COLLECTIBLE } from '../../shared/config/constants';
 import { Collectible as CollectibleType, CollectibleType as CollectibleEnum } from '../../shared/types';
 
+/**
+ * Represents collectible items that players can pick up in the game.
+ * Provides various buffs, health restoration, or score bonuses.
+ */
 export class Collectible extends Phaser.Physics.Matter.Sprite {
   public id: string;
   public type: CollectibleEnum;
@@ -47,6 +51,11 @@ export class Collectible extends Phaser.Physics.Matter.Sprite {
     }
   }
 
+  /**
+   * Applies the collectible's effect to the player and deactivates the collectible.
+   * Effects vary by collectible type: health restoration, score bonus, or buffs.
+   * @param player - The player object that collected this item
+   */
   collect(player: any): void {
     switch (this.type) {
       case CollectibleEnum.HEALTH:
@@ -88,6 +97,10 @@ export class Collectible extends Phaser.Physics.Matter.Sprite {
     this.setVisible(false);
   }
 
+  /**
+   * Gets the current state of the collectible for network synchronization.
+   * @returns The collectible's state data
+   */
   getState(): CollectibleType {
     return {
       id: this.id,
@@ -102,6 +115,10 @@ export class Collectible extends Phaser.Physics.Matter.Sprite {
       this.scene.sound.play('collectible_pickup');
   }
 
+  /**
+   * Resets the collectible to its initial state for object pooling.
+   * Deactivates and hides the collectible, preparing it for reuse.
+   */
   public reset(): void {
     if (this.body) {
       this.x = 0;

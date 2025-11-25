@@ -7,6 +7,10 @@ exports.Collectible = void 0;
 const phaser_1 = __importDefault(require("phaser"));
 const constants_1 = require("../../shared/config/constants");
 const types_1 = require("../../shared/types");
+/**
+ * Represents collectible items that players can pick up in the game.
+ * Provides various buffs, health restoration, or score bonuses.
+ */
 class Collectible extends phaser_1.default.Physics.Matter.Sprite {
     constructor(scene, x, y, texture, type, value) {
         super(scene.matter.world, x, y, texture);
@@ -41,6 +45,11 @@ class Collectible extends phaser_1.default.Physics.Matter.Sprite {
                 break;
         }
     }
+    /**
+     * Applies the collectible's effect to the player and deactivates the collectible.
+     * Effects vary by collectible type: health restoration, score bonus, or buffs.
+     * @param player - The player object that collected this item
+     */
     collect(player) {
         switch (this.type) {
             case types_1.CollectibleType.HEALTH:
@@ -78,6 +87,10 @@ class Collectible extends phaser_1.default.Physics.Matter.Sprite {
         this.setActive(false);
         this.setVisible(false);
     }
+    /**
+     * Gets the current state of the collectible for network synchronization.
+     * @returns The collectible's state data
+     */
     getState() {
         return {
             id: this.id,
@@ -90,6 +103,10 @@ class Collectible extends phaser_1.default.Physics.Matter.Sprite {
     playPickupSound() {
         this.scene.sound.play('collectible_pickup');
     }
+    /**
+     * Resets the collectible to its initial state for object pooling.
+     * Deactivates and hides the collectible, preparing it for reuse.
+     */
     reset() {
         if (this.body) {
             this.x = 0;

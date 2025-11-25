@@ -15,7 +15,14 @@ const ObjectPool_1 = require("../systems/ObjectPool");
 const NetworkManager_1 = require("../network/NetworkManager");
 const UpgradeScene_1 = require("./UpgradeScene");
 const types_1 = require("../../shared/types");
+/**
+ * Main game scene that handles both single-player and multiplayer gameplay.
+ * Manages game entities, physics, networking, and UI updates.
+ */
 class GameScene extends phaser_1.default.Scene {
+    /**
+     * Creates a new GameScene instance.
+     */
     constructor() {
         super({ key: 'Game' });
         this.mode = 'single';
@@ -28,6 +35,10 @@ class GameScene extends phaser_1.default.Scene {
         this.previousHealth = 0;
         this.projectilePool = []; // Pool for projectile bodies
     }
+    /**
+     * Initializes the scene with game mode data.
+     * @param data - Scene initialization data containing the game mode
+     */
     init(data) {
         this.mode = data.mode || 'single';
     }
@@ -64,6 +75,8 @@ class GameScene extends phaser_1.default.Scene {
                 this.mode = 'single';
                 this.initializeSinglePlayer();
             });
+            // Create wave text for multiplayer
+            this.waveText = this.createUIText(this.getResponsiveX(10), this.getResponsiveY(40), `Wave: 1`);
         }
         else {
             this.initializeSinglePlayer();
@@ -242,6 +255,13 @@ class GameScene extends phaser_1.default.Scene {
             this.projectilePool.push(projectile);
         }
     }
+    /**
+     * Gets a projectile from the object pool or creates a new one.
+     * @param x - X position to place the projectile
+     * @param y - Y position to place the projectile
+     * @param mask - Collision mask for the projectile
+     * @returns The projectile body or null if pool is exhausted
+     */
     getProjectile(x, y, mask) {
         let projectile = this.projectilePool.pop();
         if (!projectile) {
@@ -259,6 +279,10 @@ class GameScene extends phaser_1.default.Scene {
         }
         return projectile;
     }
+    /**
+     * Returns a projectile to the object pool.
+     * @param projectile - The projectile body to release
+     */
     releaseProjectile(projectile) {
         this.matter.world.remove(projectile);
         if (this.projectilePool.length < 50) { // Max pool size
@@ -426,6 +450,7 @@ class GameScene extends phaser_1.default.Scene {
         // Update UI
         this.updateHealthBar();
         this.scoreText.setText(`Score: ${this.player.score}`);
+        this.timerText.setText(`Time: ${(this.gameTimer / 1000).toFixed(1)}s`);
     }
     getDirectionFromInput() {
         let x = 0;
@@ -631,9 +656,14 @@ class GameScene extends phaser_1.default.Scene {
                     remoteEnemy.setVisible(false);
                 }
                 else if (enemyData.isAlive) {
-                    // Play walk animation based on facing direction
+                    // Play appropriate animation based on attack state
                     const dir = this.getDirectionString(enemyData.facingDirection);
-                    remoteEnemy.anims.play(`${enemyData.type}_walk_${dir}`, true);
+                    if (enemyData.isAttacking) {
+                        remoteEnemy.anims.play(`${enemyData.type}_attack_${dir}`, true);
+                    }
+                    else {
+                        remoteEnemy.anims.play(`${enemyData.type}_walk_${dir}`, true);
+                    }
                 }
             }
         });

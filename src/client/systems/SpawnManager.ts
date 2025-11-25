@@ -3,6 +3,10 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../../shared/config/constants';
 import { Enemy } from '../entities/Enemy';
 import { ObjectPool } from './ObjectPool';
 
+/**
+ * Manages enemy spawning and wave progression in single-player mode.
+ * Handles enemy lifecycle, difficulty scaling, and collectible drops.
+ */
 export class SpawnManager {
   private scene: Phaser.Scene;
   private player: any;
@@ -30,6 +34,10 @@ export class SpawnManager {
     ];
   }
 
+  /**
+   * Starts a new enemy wave with the current wave's enemy types and count.
+   * Spawns enemies at random edge positions around the arena.
+   */
   startWave(): void {
     this.waveInProgress = true;
     const enemyTypes = this.getEnemyTypesForWave();
@@ -89,6 +97,11 @@ export class SpawnManager {
     }
   }
 
+  /**
+   * Updates all active enemies and handles enemy lifecycle.
+   * Removes dead enemies and releases them back to the object pool.
+   * @param delta - Time elapsed since last update
+   */
   update(delta: number): void {
     if (this.waveInProgress) {
       // Filter out dead enemies and release them back to pool
@@ -125,10 +138,18 @@ export class SpawnManager {
     }
   }
 
+  /**
+   * Gets the current wave number.
+   * @returns The current wave number (starting from 1)
+   */
   getCurrentWave(): number {
     return this.currentWave;
   }
 
+  /**
+   * Checks if a wave is currently in progress.
+   * @returns True if enemies are still active, false if wave is complete
+   */
   isWaveInProgress(): boolean {
     return this.waveInProgress;
   }

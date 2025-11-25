@@ -9,7 +9,15 @@ const constants_1 = require("../../shared/config/constants");
 const types_1 = require("../../shared/types");
 const enemies_json_1 = __importDefault(require("../../shared/config/enemies.json"));
 const Collectible_1 = require("./Collectible");
+/**
+ * Abstract base class for all enemy types in the game.
+ * Handles common enemy behavior like movement, attacking, and taking damage.
+ */
 class Enemy extends phaser_1.default.Physics.Matter.Sprite {
+    /**
+     * Gets the alive status of the enemy.
+     * @returns True if the enemy is alive, false otherwise
+     */
     getIsAlive() {
         return this.isAlive;
     }
@@ -19,6 +27,9 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
         this.lastAttackTime = 0;
         this.attackRange = 30;
         this.isAlive = true;
+        this.isAttacking = false;
+        this.attackEndTime = 0;
+        this.isDying = false;
         this.facingDirection = { x: 1, y: 0 };
         this.config = config;
         this.id = config.id;
@@ -98,25 +109,25 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
                 key: `${attackKey}_down`,
                 frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [0, 1, 2, 3, 4, 5, 6, 7, 8] }),
                 frameRate: 15,
-                repeat: 0
+                repeat: -1
             });
             this.scene.anims.create({
                 key: `${attackKey}_up`,
                 frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [9, 10, 11, 12, 13, 14, 15, 16, 17] }),
                 frameRate: 15,
-                repeat: 0
+                repeat: -1
             });
             this.scene.anims.create({
                 key: `${attackKey}_left`,
                 frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [18, 19, 20, 21, 22, 23, 24, 25, 26] }),
                 frameRate: 15,
-                repeat: 0
+                repeat: -1
             });
             this.scene.anims.create({
                 key: `${attackKey}_right`,
                 frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [27, 28, 29, 30, 31, 32, 33, 34, 35] }),
                 frameRate: 15,
-                repeat: 0
+                repeat: -1
             });
         }
         else {
@@ -125,25 +136,25 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
                 key: `${attackKey}_down`,
                 frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }),
                 frameRate: 15,
-                repeat: 0
+                repeat: -1
             });
             this.scene.anims.create({
                 key: `${attackKey}_up`,
                 frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] }),
                 frameRate: 15,
-                repeat: 0
+                repeat: -1
             });
             this.scene.anims.create({
                 key: `${attackKey}_left`,
                 frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] }),
                 frameRate: 15,
-                repeat: 0
+                repeat: -1
             });
             this.scene.anims.create({
                 key: `${attackKey}_right`,
                 frames: this.scene.anims.generateFrameNumbers(attackKey, { frames: [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47] }),
                 frameRate: 15,
-                repeat: 0
+                repeat: -1
             });
         }
         // Death animation
@@ -154,31 +165,67 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
             repeat: 0
         });
     }
+    /**
+     * Sets the player reference for enemy AI targeting.
+     * @param player - The player object to target
+     */
     setPlayer(player) {
         this.player = player;
     }
+    /**
+     * Sets the callback function for dropping collectibles when the enemy dies.
+     * @param callback - Function to call when dropping collectibles
+     */
     setDropCollectibleCallback(callback) {
         this.dropCollectibleCallback = callback;
     }
     update(delta) {
         if (!this.isAlive || !this.player)
             return;
+        // Reset attack state if attack duration has passed
+        if (this.isAttacking && this.scene.time.now > this.attackEndTime) {
+            this.isAttacking = false;
+        }
         // Update facing direction
         const angle = phaser_1.default.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
         this.facingDirection.x = Math.cos(angle);
         this.facingDirection.y = Math.sin(angle);
         const distance = phaser_1.default.Math.Distance.Between(this.x, this.y, this.player.x, this.player.y);
-        if (distance <= this.attackRange) {
+        if (distance <= this.attackRange && !this.isAttacking) {
             this.attack();
         }
-        else {
+        else if (!this.isAttacking) {
             this.chasePlayer();
         }
+        else {
+            // Stop moving during attack
+            this.setVelocity(0, 0);
+        }
     }
+    attack() {
+        if (this.scene.time.now - this.lastAttackTime < this.attackCooldown)
+            return;
+        this.lastAttackTime = this.scene.time.now;
+        this.isAttacking = true;
+        this.attackEndTime = this.scene.time.now + 600; // 600ms attack duration
+        this.anims.play(`${this.config.animations.attack}_${this.getDirectionString()}`, true);
+    }
+    /**
+     * Applies damage to the enemy and handles death.
+     * If the enemy is attacking, death is delayed to allow attack animation to complete.
+     * @param amount - The amount of damage to apply
+     */
     takeDamage(amount) {
         this.health -= amount;
-        if (this.health <= 0) {
-            this.die();
+        if (this.health <= 0 && !this.isDying) {
+            this.isDying = true;
+            if (this.isAttacking) {
+                // Delay death to allow attack animation to finish
+                this.scene.time.delayedCall(600, () => this.die());
+            }
+            else {
+                this.die();
+            }
         }
     }
     die() {
@@ -249,9 +296,19 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
         }
         this.health = this.maxHealth;
         this.isAlive = true;
+        this.isAttacking = false;
+        this.isDying = false;
         this.setActive(false);
         this.setVisible(false);
     }
+    /**
+     * Factory method to create an enemy of the specified type.
+     * @param type - The type of enemy to create ('slime' or 'goblin')
+     * @param scene - The Phaser scene to create the enemy in
+     * @param x - X position for the enemy
+     * @param y - Y position for the enemy
+     * @returns The created enemy instance or null if type is invalid
+     */
     static createEnemy(type, scene, x, y) {
         const config = enemies_json_1.default.find((c) => c.id === type);
         if (!config)
@@ -267,12 +324,14 @@ class Enemy extends phaser_1.default.Physics.Matter.Sprite {
     }
 }
 exports.Enemy = Enemy;
+/**
+ * Slime enemy that attacks with melee range.
+ * Creates circular hitboxes for close-range attacks.
+ */
 class Slime extends Enemy {
     attack() {
-        if (this.scene.time.now - this.lastAttackTime < this.attackCooldown)
-            return;
-        this.lastAttackTime = this.scene.time.now;
-        this.anims.play(`${this.config.animations.attack}_${this.getDirectionString()}`, true);
+        // Call base attack method for animation and state management
+        super.attack();
         // Melee attack: create hitbox
         const angle = phaser_1.default.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
         const hitboxX = this.x + Math.cos(angle) * 20;
@@ -312,12 +371,14 @@ class Slime extends Enemy {
     }
 }
 exports.Slime = Slime;
+/**
+ * Goblin enemy that attacks with ranged projectiles.
+ * Shoots projectiles that travel toward the player.
+ */
 class Goblin extends Enemy {
     attack() {
-        if (this.scene.time.now - this.lastAttackTime < this.attackCooldown)
-            return;
-        this.lastAttackTime = this.scene.time.now;
-        this.anims.play(`${this.config.animations.attack}_${this.getDirectionString()}`, true);
+        // Call base attack method for animation and state management
+        super.attack();
         // Ranged attack: shoot projectile
         const angle = phaser_1.default.Math.Angle.Between(this.x, this.y, this.player.x, this.player.y);
         const projectile = this.scene.getProjectile?.(this.x, this.y, constants_1.COLLISION_CATEGORY_PLAYER);

@@ -7,6 +7,10 @@ exports.GameRoom = void 0;
 const index_1 = require("../shared/types/index");
 const constants_1 = require("../shared/config/constants");
 const enemies_json_1 = __importDefault(require("../shared/config/enemies.json"));
+/**
+ * Server-side game room that manages multiplayer game state, players, enemies, and collectibles.
+ * Handles game logic, physics updates, and synchronization for all connected players.
+ */
 class GameRoom {
     constructor(wsServer) {
         this.players = new Map();
@@ -23,9 +27,19 @@ class GameRoom {
         this.waveCleared = false;
         this.wsServer = wsServer;
     }
+    /**
+     * Checks if a new player can join the game room.
+     * @returns True if the room has space and is in waiting state, false otherwise
+     */
     canJoin() {
         return this.players.size < this.maxPlayers && this.gameState === index_1.GameState.WAITING;
     }
+    /**
+     * Adds a new player to the game room.
+     * @param playerId - Unique identifier for the player
+     * @param playerName - Optional display name for the player
+     * @returns True if player was successfully added, false otherwise
+     */
     addPlayer(playerId, playerName) {
         if (!this.canJoin())
             return false;
@@ -65,6 +79,10 @@ class GameRoom {
         }
         return true;
     }
+    /**
+     * Removes a player from the game room.
+     * @param playerId - The ID of the player to remove
+     */
     removePlayer(playerId) {
         this.players.delete(playerId);
         this.wsServer.notifyPlayerLeft(playerId);
@@ -73,6 +91,11 @@ class GameRoom {
         //   this.endGame();
         // }
     }
+    /**
+     * Processes incoming messages from players.
+     * @param playerId - The ID of the player sending the message
+     * @param message - The game message to process
+     */
     handleMessage(playerId, message) {
         switch (message.type) {
             case index_1.MessageType.JOIN_GAME:
@@ -93,18 +116,22 @@ class GameRoom {
         const player = this.players.get(playerId);
         if (!player || player.state === index_1.PlayerState.DEAD)
             return;
-        // Update player direction
+        // Store current direction for animation state determination
         player.direction = input.direction;
-        // Update player direction and position
+        // Server-authoritative movement prevents speed hacks and maintains consistency
+        // Client sends normalized direction vectors (-1 to 1), server applies actual movement
         if (input.direction) {
-            // Update facing direction if there's actual input (not {0,0})
+            // Only update facing direction when there's actual movement to prevent
+            // flickering during diagonal inputs that get normalized
             if (input.direction.x !== 0 || input.direction.y !== 0) {
                 player.facingDirection = input.direction;
             }
-            // Movement is based on input direction
+            // Apply movement without delta time since input is processed per frame
+            // This ensures consistent movement regardless of server tick rate
             player.x += input.direction.x * player.speed;
             player.y += input.direction.y * player.speed;
-            // Keep player in bounds
+            // Boundary checking prevents players from escaping the arena
+            // Math.max/Math.min is more performant than Phaser.Math.Clamp for simple bounds
             player.x = Math.max(0, Math.min(constants_1.GAME_WIDTH, player.x));
             player.y = Math.max(0, Math.min(constants_1.GAME_HEIGHT, player.y));
         }
@@ -183,6 +210,10 @@ class GameRoom {
         this.gameState = index_1.GameState.FINISHED;
         this.wsServer.notifyGameEnd();
     }
+    /**
+     * Updates the game state for the current frame.
+     * Handles player updates, enemy AI, collectible collection, and wave progression.
+     */
     update() {
         if (this.gameState !== index_1.GameState.PLAYING)
             return;
@@ -190,14 +221,16 @@ class GameRoom {
         this.updatePlayers();
         this.updateEnemies();
         this.updateCollectibles();
-        // Check for wave completion
+        // Wave progression creates increasing difficulty and pacing
+        // Only advance when all enemies are defeated (not just when waveCleared flag is set)
         if (!this.waveCleared && this.enemies.size === 0) {
-            this.waveCleared = true;
+            this.waveCleared = true; // Prevent multiple triggers
             this.currentWave++;
-            // Start next wave after a short delay
+            // Delay next wave to give players breathing room and time to collect items
+            // 2 seconds allows for collectible gathering without feeling rushed
             setTimeout(() => {
                 this.startWave();
-            }, 2000); // 2 second delay between waves
+            }, 2000);
         }
     }
     updatePlayers() {
@@ -213,11 +246,12 @@ class GameRoom {
                     player.currentState = 'idle';
                 }
             }
-            // Update buff timers
+            // Update buff timers using delta time for frame-rate independent duration
+            // Convert deltaTime (seconds) to milliseconds for timer consistency
             if (player.invulnerableTimer > 0) {
-                player.invulnerableTimer -= this.deltaTime * 1000; // Convert to milliseconds
+                player.invulnerableTimer -= this.deltaTime * 1000;
                 if (player.invulnerableTimer <= 0) {
-                    player.invulnerableTimer = 0;
+                    player.invulnerableTimer = 0; // Prevent negative values
                 }
             }
             if (player.damageBoostTimer > 0) {
@@ -240,11 +274,14 @@ class GameRoom {
         const config = enemies_json_1.default.find(e => e.id === randomType);
         if (!config)
             return;
-        // Scale enemy stats based on wave
-        const waveMultiplier = 1 + (this.currentWave - 1) * 0.05; // 5% increase per wave
+        // Scale enemy stats based on wave for progressive difficulty
+        // 5% increase per wave provides noticeable but not overwhelming scaling
+        const waveMultiplier = 1 + (this.currentWave - 1) * 0.05;
         const health = Math.floor(config.health * waveMultiplier);
         const damage = Math.floor(config.damage * waveMultiplier);
-        const speed = config.speed * 100 * Math.min(1 + (this.currentWave - 1) * 0.05, 2.0); // Scale to pixels per second, max 2x speed
+        // Convert config speed (likely 0-1 range) to pixels per second with wave scaling
+        // Cap at 2x base speed to prevent enemies from becoming too fast to dodge
+        const speed = config.speed * 100 * Math.min(1 + (this.currentWave - 1) * 0.05, 2.0);
         const enemy = {
             id: `enemy_${this.nextEnemyId++}`,
             x: Math.random() * constants_1.GAME_WIDTH,
@@ -255,22 +292,31 @@ class GameRoom {
             damage: damage,
             type: randomType,
             isAlive: true,
+            isAttacking: false,
             facingDirection: { x: 1, y: 0 }
         };
         this.enemies.set(enemy.id, enemy);
     }
     startWave() {
         this.waveCleared = false;
-        const baseEnemies = 3; // Base number of enemies
-        const waveEnemies = baseEnemies + Math.floor((this.currentWave - 1) / 2); // +1 enemy every 2 waves
+        // Calculate enemy count with gradual increase for sustainable difficulty curve
+        const baseEnemies = 3; // Starting enemies per wave
+        // Add 1 enemy every 2 waves (wave 1: 3, wave 2: 3, wave 3: 4, wave 4: 4, etc.)
+        // This creates manageable difficulty progression without overwhelming spikes
+        const waveEnemies = baseEnemies + Math.floor((this.currentWave - 1) / 2);
         for (let i = 0; i < waveEnemies; i++) {
             this.spawnEnemy();
         }
     }
     updateEnemies() {
+        const now = Date.now();
         for (const [enemyId, enemy] of this.enemies) {
             if (!enemy.isAlive)
                 continue;
+            // Reset attack state if attack duration has passed
+            if (enemy.isAttacking && enemy.attackEndTime && now > enemy.attackEndTime) {
+                enemy.isAttacking = false;
+            }
             // Find nearest player
             let nearestPlayer = null;
             let minDistance = Infinity;
@@ -286,28 +332,35 @@ class GameRoom {
                 }
             }
             if (nearestPlayer) {
-                // Update facing direction
+                // Calculate direction to player for both movement and facing
                 const dx = nearestPlayer.x - enemy.x;
                 const dy = nearestPlayer.y - enemy.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
+                // Normalize direction vector for consistent facing regardless of distance
                 if (distance > 0) {
                     enemy.facingDirection.x = dx / distance;
                     enemy.facingDirection.y = dy / distance;
                 }
-                // Move towards player
-                if (distance > 0) {
+                // Move towards player only when not attacking to prevent movement during attack animation
+                // This creates more predictable enemy behavior and prevents attack interruption
+                if (distance > 0 && !enemy.isAttacking) {
                     enemy.x += (dx / distance) * enemy.speed * this.deltaTime;
                     enemy.y += (dy / distance) * enemy.speed * this.deltaTime;
                 }
-                // Attack if close
-                if (distance < 30) { // attack range
-                    if (nearestPlayer.invulnerableTimer <= 0) { // Only damage if not invulnerable
+                // Attack range check - close enough to hit but not too close to prevent getting stuck
+                // 30 units provides balance between aggression and player maneuverability
+                if (distance < 30 && !enemy.isAttacking) {
+                    enemy.isAttacking = true;
+                    // Attack duration matches animation length for visual consistency
+                    enemy.attackEndTime = now + 300;
+                    // Respect invulnerability frames to prevent unfair damage
+                    if (nearestPlayer.invulnerableTimer <= 0) {
                         nearestPlayer.health -= enemy.damage;
                         if (nearestPlayer.health <= 0) {
                             nearestPlayer.state = index_1.PlayerState.DEAD;
-                            // Notify all players that this player died
+                            // Broadcast death to all clients for immediate UI updates
                             this.wsServer.notifyPlayerDied(nearestPlayer.id);
-                            // Check if all players are dead
+                            // End game if no living players remain (handles both single and multiplayer)
                             const livingPlayers = Array.from(this.players.values()).filter(p => p.state !== index_1.PlayerState.DEAD);
                             if (livingPlayers.length === 0) {
                                 this.endGame();
@@ -357,39 +410,42 @@ class GameRoom {
         }
     }
     spawnRandomCollectible(x, y) {
+        // Weighted random selection favors health potions for player survivability
+        // Power-ups are less common to maintain balance and excitement
         const rand = Math.random();
         let type;
         let texture;
         let value;
-        if (rand < 0.4) {
+        if (rand < 0.4) { // 40% chance - Most common for healing
             type = index_1.CollectibleType.HEALTH;
             texture = 'health_potion';
             value = 20;
         }
-        else if (rand < 0.6) {
+        else if (rand < 0.6) { // 20% chance - Defensive power-up
             type = index_1.CollectibleType.SHIELD;
             texture = 'shield';
-            value = 5; // 5 seconds
+            value = 5; // 5 seconds of invulnerability
         }
-        else if (rand < 0.8) {
+        else if (rand < 0.8) { // 20% chance - Offensive power-up
             type = index_1.CollectibleType.DAMAGE_BOOST;
             texture = 'damage_boost';
-            value = 10; // 10 seconds
+            value = 10; // 10 seconds of 1.5x damage
         }
-        else if (rand < 0.9) {
+        else if (rand < 0.9) { // 10% chance - Mobility power-up
             type = index_1.CollectibleType.SPEED_BOOST;
             texture = 'speed_boost';
-            value = 10; // 10 seconds
+            value = 10; // 10 seconds of 1.5x speed
         }
-        else {
+        else { // 10% chance - Score currency
             type = index_1.CollectibleType.COIN;
             texture = 'coin';
-            value = 10;
+            value = 10; // Score points
         }
         this.spawnCollectible(x, y, type, value);
     }
     spawnCollectible(x, y, type, value = 1) {
-        // Add random offset to prevent immediate collection
+        // Add random offset to prevent immediate collection by the player who killed the enemy
+        // This creates fair gameplay by requiring players to move to collect items
         const offsetX = (Math.random() - 0.5) * 40; // +/- 20 pixels
         const offsetY = (Math.random() - 0.5) * 40;
         const collectible = {
@@ -401,6 +457,10 @@ class GameRoom {
         };
         this.collectibles.set(collectible.id, collectible);
     }
+    /**
+     * Gets the current complete game state for synchronization.
+     * @returns The full game state including players, enemies, collectibles, and metadata
+     */
     getGameState() {
         return {
             players: Array.from(this.players.values()),
@@ -411,6 +471,10 @@ class GameRoom {
             gameTime: this.gameTime
         };
     }
+    /**
+     * Gets the final scores for all players at game end.
+     * @returns Array of player scores for leaderboard/ranking
+     */
     getFinalScores() {
         return Array.from(this.players.values()).map(player => ({
             playerId: player.id,

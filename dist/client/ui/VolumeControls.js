@@ -5,6 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VolumeControls = void 0;
 const phaser_1 = __importDefault(require("phaser"));
+/**
+ * UI component for controlling game audio volumes.
+ * Provides sliders for master volume, SFX volume, and music volume.
+ * Settings are automatically saved to and loaded from localStorage.
+ */
 class VolumeControls {
     constructor(scene, x, y, onClose) {
         this.masterVolume = 1.0;
@@ -144,18 +149,38 @@ class VolumeControls {
             console.warn('Failed to save volumes:', error);
         }
     }
+    /**
+     * Sets the visibility of the volume controls UI.
+     * @param visible - Whether the controls should be visible
+     */
     setVisible(visible) {
         this.container.setVisible(visible);
     }
+    /**
+     * Gets the container holding all volume control UI elements.
+     * @returns The Phaser container with all UI elements
+     */
     getContainer() {
         return this.container;
     }
+    /**
+     * Gets the current master volume level.
+     * @returns Master volume as a number between 0 and 1
+     */
     getMasterVolume() {
         return this.masterVolume;
     }
+    /**
+     * Gets the current SFX volume level.
+     * @returns SFX volume as a number between 0 and 1
+     */
     getSfxVolume() {
         return this.sfxVolume;
     }
+    /**
+     * Gets the current music volume level.
+     * @returns Music volume as a number between 0 and 1
+     */
     getMusicVolume() {
         return this.musicVolume;
     }

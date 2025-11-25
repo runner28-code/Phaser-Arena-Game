@@ -15,6 +15,10 @@ import {
 } from '../../shared/config/constants';
 import { PlayerStateEnum, UpgradeType, PlayerUpgrades } from '../../shared/types';
 
+/**
+ * Represents the player character in the game.
+ * Handles movement, combat, upgrades, and various player mechanics.
+ */
 export class Player extends Phaser.Physics.Matter.Sprite {
   public id: string;
   public health: number;
@@ -357,6 +361,10 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     }
   }
 
+  /**
+   * Applies damage to the player, considering invulnerability.
+   * @param amount - The amount of damage to apply
+   */
   takeDamage(amount: number): void {
     if (this.invulnerable) return;
     this.scene.sound.play('enemy_damage');
@@ -366,24 +374,44 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     }
   }
 
+  /**
+   * Heals the player by the specified amount, up to maximum health.
+   * @param amount - The amount of health to restore
+   */
   heal(amount: number): void {
     this.health = Math.min(this.health + amount, this.maxHealth);
   }
 
+  /**
+   * Adds score to the player's total.
+   * @param amount - The score amount to add
+   */
   addScore(amount: number): void {
     this.score += amount;
   }
 
+  /**
+   * Applies a shield buff that makes the player invulnerable.
+   * @param duration - Duration of the shield in seconds
+   */
   applyShield(duration: number): void {
     this.invulnerable = true;
     this.invulnerableTimer = duration * 1000; // Convert to milliseconds
   }
 
+  /**
+   * Applies a damage boost buff that increases attack damage.
+   * @param duration - Duration of the damage boost in seconds
+   */
   applyDamageBoost(duration: number): void {
     this.damageMultiplier = 1.5;
     this.damageBoostTimer = duration * 1000;
   }
 
+  /**
+   * Applies a speed boost buff that increases movement speed.
+   * @param duration - Duration of the speed boost in seconds
+   */
   applySpeedBoost(duration: number): void {
     this.speedMultiplier = 1.5;
     this.speedBoostTimer = duration * 1000;
@@ -408,6 +436,10 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     this.damage = PLAYER_DAMAGE + (this.upgrades.damageLevel * 5);
   }
 
+  /**
+   * Applies an upgrade to the player, increasing the corresponding stat.
+   * @param upgradeType - The type of upgrade to apply
+   */
   applyUpgrade(upgradeType: UpgradeType): void {
     switch (upgradeType) {
       case UpgradeType.DAMAGE:
@@ -423,11 +455,18 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     this.applyUpgradeBonuses();
   }
 
+  /**
+   * Gets the current upgrade levels for the player.
+   * @returns A copy of the player's upgrade levels
+   */
   getUpgrades(): PlayerUpgrades {
     return { ...this.upgrades };
   }
 
-
+  /**
+   * Gets the remaining time for active buffs in seconds.
+   * @returns Object containing remaining time for each buff type
+   */
   getBuffTimers(): { invulnerable: number; damageBoost: number; speedBoost: number } {
     return {
       invulnerable: Math.max(0, this.invulnerableTimer / 1000),
@@ -436,20 +475,34 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     };
   }
 
-  // Public method for multiplayer attack handling
+  /**
+   * Checks if the player can perform an attack based on cooldown.
+   * @returns True if the player can attack, false otherwise
+   */
   canAttack(): boolean {
     return this.scene.time.now - this.lastAttackTime > this.attackCooldown;
   }
 
+  /**
+   * Performs an attack action, updating the last attack time.
+   */
   performAttack(): void {
     this.lastAttackTime = this.scene.time.now;
     this.attack();
   }
 
+  /**
+   * Gets the timestamp of the player's last attack.
+   * @returns The last attack time in milliseconds
+   */
   getLastAttackTime(): number {
     return this.lastAttackTime;
   }
 
+  /**
+   * Sets the timestamp of the player's last attack.
+   * @param time - The attack time to set in milliseconds
+   */
   setLastAttackTime(time: number): void {
     this.lastAttackTime = time;
   }

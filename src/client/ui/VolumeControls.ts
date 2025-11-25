@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
 
+/**
+ * UI component for controlling game audio volumes.
+ * Provides sliders for master volume, SFX volume, and music volume.
+ * Settings are automatically saved to and loaded from localStorage.
+ */
 export class VolumeControls {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
@@ -162,22 +167,42 @@ export class VolumeControls {
     }
   }
 
+  /**
+   * Sets the visibility of the volume controls UI.
+   * @param visible - Whether the controls should be visible
+   */
   public setVisible(visible: boolean): void {
     this.container.setVisible(visible);
   }
 
+  /**
+   * Gets the container holding all volume control UI elements.
+   * @returns The Phaser container with all UI elements
+   */
   public getContainer(): Phaser.GameObjects.Container {
     return this.container;
   }
 
+  /**
+   * Gets the current master volume level.
+   * @returns Master volume as a number between 0 and 1
+   */
   public getMasterVolume(): number {
     return this.masterVolume;
   }
 
+  /**
+   * Gets the current SFX volume level.
+   * @returns SFX volume as a number between 0 and 1
+   */
   public getSfxVolume(): number {
     return this.sfxVolume;
   }
 
+  /**
+   * Gets the current music volume level.
+   * @returns Music volume as a number between 0 and 1
+   */
   public getMusicVolume(): number {
     return this.musicVolume;
   }
