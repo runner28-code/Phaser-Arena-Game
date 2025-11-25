@@ -6,54 +6,83 @@ export class VolumeControls {
   private masterVolume: number = 1.0;
   private sfxVolume: number = 1.0;
   private musicVolume: number = 0.5;
+  private onClose?: () => void;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, onClose?: () => void) {
     this.scene = scene;
+    this.onClose = onClose;
     this.container = scene.add.container(x, y);
+    this.loadSavedVolumes();
     this.createControls();
   }
 
   private createControls(): void {
     const background = this.scene.add.graphics();
     background.fillStyle(0x000000, 0.8);
-    background.fillRoundedRect(-150, -100, 300, 200, 10);
+    background.fillRoundedRect(-160, -120, 320, 240, 10);
     this.container.add(background);
 
+    // Close button
+    const closeButton = this.scene.add.text(140, -110, '×', {
+      fontSize: '24px',
+      color: '#ffffff'
+    }).setInteractive();
+    closeButton.on('pointerdown', () => {
+      this.setVisible(false);
+      if (this.onClose) {
+        this.onClose();
+      }
+    });
+    closeButton.on('pointerover', () => closeButton.setColor('#ff0000'));
+    closeButton.on('pointerout', () => closeButton.setColor('#ffffff'));
+    this.container.add(closeButton);
+
+    // Title
+    const title = this.scene.add.text(0, -100, 'Settings', {
+      fontSize: '20px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    this.container.add(title);
+
     // Master Volume
-    const masterLabel = this.scene.add.text(-130, -80, 'Master Volume', {
+    const masterLabel = this.scene.add.text(-140, -70, 'Master Volume', {
       fontSize: '16px',
       color: '#ffffff'
     });
     this.container.add(masterLabel);
 
-    const masterSlider = this.createSlider(-130, -50, this.masterVolume, (value: number) => {
+    const masterSlider = this.createSlider(-140, -40, this.masterVolume, (value: number) => {
       this.masterVolume = value;
+      this.saveVolumes();
       this.updateVolumes();
     });
     this.container.add(masterSlider);
 
     // SFX Volume
-    const sfxLabel = this.scene.add.text(-130, -20, 'SFX Volume', {
+    const sfxLabel = this.scene.add.text(-140, -10, 'SFX Volume', {
       fontSize: '16px',
       color: '#ffffff'
     });
     this.container.add(sfxLabel);
 
-    const sfxSlider = this.createSlider(-130, 10, this.sfxVolume, (value: number) => {
+    const sfxSlider = this.createSlider(-140, 20, this.sfxVolume, (value: number) => {
       this.sfxVolume = value;
+      this.saveVolumes();
       this.updateVolumes();
     });
     this.container.add(sfxSlider);
 
     // Music Volume
-    const musicLabel = this.scene.add.text(-130, 40, 'Music Volume', {
+    const musicLabel = this.scene.add.text(-140, 50, 'Music Volume', {
       fontSize: '16px',
       color: '#ffffff'
     });
     this.container.add(musicLabel);
 
-    const musicSlider = this.createSlider(-130, 70, this.musicVolume, (value: number) => {
+    const musicSlider = this.createSlider(-140, 80, this.musicVolume, (value: number) => {
       this.musicVolume = value;
+      this.saveVolumes();
       this.updateVolumes();
     });
     this.container.add(musicSlider);
@@ -98,12 +127,39 @@ export class VolumeControls {
   }
 
   private updateVolumes(): void {
-    // Update all sound volumes
+    // Update master volume
     this.scene.sound.volume = this.masterVolume;
 
-    // Update specific sound categories if needed
-    // For Phaser, we can set individual sound volumes or use groups
-    // For now, we'll use the master volume as base
+    // Note: Individual sound volume adjustments would need to be handled
+    // when sounds are played, as Phaser doesn't provide easy access to
+    // all currently playing sounds. The master volume affects all sounds.
+  }
+
+  private loadSavedVolumes(): void {
+    try {
+      const saved = localStorage.getItem('gameVolumes');
+      if (saved) {
+        const volumes = JSON.parse(saved);
+        this.masterVolume = volumes.master ?? 1.0;
+        this.sfxVolume = volumes.sfx ?? 1.0;
+        this.musicVolume = volumes.music ?? 0.5;
+      }
+    } catch (error) {
+      console.warn('Failed to load saved volumes:', error);
+    }
+  }
+
+  private saveVolumes(): void {
+    try {
+      const volumes = {
+        master: this.masterVolume,
+        sfx: this.sfxVolume,
+        music: this.musicVolume
+      };
+      localStorage.setItem('gameVolumes', JSON.stringify(volumes));
+    } catch (error) {
+      console.warn('Failed to save volumes:', error);
+    }
   }
 
   public setVisible(visible: boolean): void {

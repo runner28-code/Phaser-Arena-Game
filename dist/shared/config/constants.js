@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.COLLISION_CATEGORY_OBSTACLE = exports.COLLISION_CATEGORY_COLLECTIBLE = exports.COLLISION_CATEGORY_ATTACK = exports.COLLISION_CATEGORY_ENEMY = exports.COLLISION_CATEGORY_PLAYER = exports.ENEMY_SPEED_BASE = exports.ATTACK_COOLDOWN = exports.PLAYER_DAMAGE = exports.PLAYER_MAX_HEALTH = exports.PLAYER_HEALTH = exports.PLAYER_SPEED = exports.TILE_SIZE = exports.INPUT_RATE = exports.UPDATE_RATE = exports.SERVER_PORT = exports.GAME_HEIGHT = exports.GAME_WIDTH = void 0;
+exports.COLLISION_CATEGORY_OBSTACLE = exports.COLLISION_CATEGORY_COLLECTIBLE = exports.COLLISION_CATEGORY_ATTACK = exports.COLLISION_CATEGORY_ENEMY = exports.COLLISION_CATEGORY_PLAYER = exports.ENEMY_SPEED_BASE = exports.ATTACK_COOLDOWN = exports.PLAYER_DAMAGE = exports.PLAYER_MAX_HEALTH = exports.PLAYER_HEALTH = exports.PLAYER_SPEED = exports.TILE_SIZE = exports.INPUT_RATE = exports.UPDATE_RATE = exports.SERVER_PORT = exports.GAME_HEIGHT = exports.GAME_WIDTH = exports.getGameHeight = exports.getGameWidth = void 0;
+const getGameWidth = () => typeof window !== 'undefined' ? window.innerWidth : 800;
+exports.getGameWidth = getGameWidth;
+const getGameHeight = () => typeof window !== 'undefined' ? window.innerHeight : 600;
+exports.getGameHeight = getGameHeight;
+// For backward compatibility
 exports.GAME_WIDTH = 800;
 exports.GAME_HEIGHT = 600;
 exports.SERVER_PORT = 8080;

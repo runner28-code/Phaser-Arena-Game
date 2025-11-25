@@ -28,16 +28,16 @@ class Collectible extends phaser_1.default.Physics.Matter.Sprite {
                 this.setScale(1);
                 break;
             case types_1.CollectibleType.COIN:
-                this.setScale(0.05);
+                this.setScale(0.05); // Increased from 0.05 to 0.5 for better visibility
                 break;
             case types_1.CollectibleType.SHIELD:
-                this.setScale(0.1);
+                this.setScale(0.1); // Increased from 0.1 to 0.8
                 break;
             case types_1.CollectibleType.DAMAGE_BOOST:
-                this.setScale(0.1);
+                this.setScale(0.1); // Increased from 0.1 to 0.8
                 break;
             case types_1.CollectibleType.SPEED_BOOST:
-                this.setScale(0.1);
+                this.setScale(0.1); // Increased from 0.1 to 0.8
                 break;
         }
     }

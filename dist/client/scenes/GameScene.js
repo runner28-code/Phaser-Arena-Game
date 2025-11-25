@@ -32,7 +32,7 @@ class GameScene extends phaser_1.default.Scene {
         this.mode = data.mode || 'single';
     }
     create() {
-        // Set up matter world bounds
+        // Set up matter world bounds (always fixed game dimensions)
         this.matter.world.setBounds(0, 0, constants_1.GAME_WIDTH, constants_1.GAME_HEIGHT);
         // Create static boundary bodies
         this.createBoundaries();
@@ -40,9 +40,17 @@ class GameScene extends phaser_1.default.Scene {
         this.setupCollisionListeners();
         // Initialize object pools (needed for both modes)
         this.initializePools();
+        // Add background image
+        const bg = this.add.image(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2, 'background_game');
+        // Scale to fit the game world dimensions
+        const scaleX = constants_1.GAME_WIDTH / bg.width;
+        const scaleY = constants_1.GAME_HEIGHT / bg.height;
+        const scale = Math.max(scaleX, scaleY); // Use the larger scale to ensure full coverage
+        bg.setScale(scale);
+        bg.setDepth(-1); // Ensure background is behind everything
         // Create UI container (needed before mode-specific initialization)
         this.uiContainer = this.add.container(0, 0);
-        // Create player at center
+        // Create player at center of game world
         this.player = new Player_1.Player(this, constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2, 'player_idle');
         if (this.mode === 'multi') {
             // Initialize network manager for multiplayer
@@ -61,39 +69,39 @@ class GameScene extends phaser_1.default.Scene {
             this.initializeSinglePlayer();
         }
         // Create waiting text (for multiplayer)
-        this.waitingText = this.createUIText(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2, '', 32).setOrigin(0.5);
+        this.waitingText = this.createUIText(this.getResponsiveX(400), this.getResponsiveY(300), '', 32).setOrigin(0.5);
         // Create player count text (for multiplayer)
-        this.playerCountText = this.createUIText(10, 70, 'Players: 1');
+        this.playerCountText = this.createUIText(this.getResponsiveX(10), this.getResponsiveY(70), 'Players: 1');
         // Create death alert text (for multiplayer)
-        this.deathAlertText = this.createUIText(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2 - 50, '', 32, '#ff0000').setOrigin(0.5);
+        this.deathAlertText = this.createUIText(this.getResponsiveX(400), this.getResponsiveY(250), '', 32, '#ff0000').setOrigin(0.5);
         this.deathAlertText.setVisible(false);
         // Create buff timer texts (for single-player)
-        const xPosition = constants_1.GAME_WIDTH - 220;
-        this.shieldText = this.createUIText(xPosition, 70, '', 20, '#0000ff');
+        const xPosition = this.getResponsiveX(580);
+        this.shieldText = this.createUIText(xPosition, this.getResponsiveY(70), '', 20, '#0000ff');
         this.shieldText.setVisible(false);
-        this.damageBoostText = this.createUIText(xPosition, 95, '', 20, '#ff0000');
+        this.damageBoostText = this.createUIText(xPosition, this.getResponsiveY(95), '', 20, '#ff0000');
         this.damageBoostText.setVisible(false);
-        this.speedBoostText = this.createUIText(xPosition, 120, '', 20, '#ffff00');
+        this.speedBoostText = this.createUIText(xPosition, this.getResponsiveY(120), '', 20, '#ffff00');
         this.speedBoostText.setVisible(false);
         // Create health bar
         this.createHealthBar();
         // Create score display
-        this.scoreText = this.createUIText(constants_1.GAME_WIDTH - 10, 10, `Score: ${this.player.score}`).setOrigin(1, 0);
+        this.scoreText = this.createUIText(this.getResponsiveX(790), this.getResponsiveY(10), `Score: ${this.player.score}`).setOrigin(1, 0);
         // Create timer display
-        this.timerText = this.createUIText(constants_1.GAME_WIDTH / 2, 10, `Time: 0.0s`).setOrigin(0.5, 0);
+        this.timerText = this.createUIText(this.getResponsiveX(400), this.getResponsiveY(10), `Time: 0.0s`).setOrigin(0.5, 0);
         // Add mode text
-        this.createUIText(10, 10, `Mode: ${this.mode}`);
+        this.createUIText(this.getResponsiveX(10), this.getResponsiveY(10), `Mode: ${this.mode}`);
         // Start background music
         this.startBackgroundMusic();
     }
     createBoundaries() {
         // Top wall
-        this.matter.add.rectangle(constants_1.GAME_WIDTH / 2, -10, constants_1.GAME_WIDTH, 20, {
+        this.matter.add.rectangle(constants_1.GAME_WIDTH / 2, -10, constants_1.GAME_WIDTH, 100, {
             isStatic: true,
             collisionFilter: { category: constants_1.COLLISION_CATEGORY_OBSTACLE }
         });
         // Bottom wall
-        this.matter.add.rectangle(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT + 10, constants_1.GAME_WIDTH, 20, {
+        this.matter.add.rectangle(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT + 10, constants_1.GAME_WIDTH, 100, {
             isStatic: true,
             collisionFilter: { category: constants_1.COLLISION_CATEGORY_OBSTACLE }
         });
@@ -108,19 +116,26 @@ class GameScene extends phaser_1.default.Scene {
             collisionFilter: { category: constants_1.COLLISION_CATEGORY_OBSTACLE }
         });
     }
-    createUIText(x, y, text, fontSize = 24, color = '#ffffff') {
+    createUIText(x, y, text, fontSize = 24, color = '#ffffff', responsive = true) {
+        const actualFontSize = responsive ? Math.max(16, Math.min(fontSize, this.cameras.main.width / 50)) : fontSize;
         const uiText = this.add.text(x, y, text, {
-            fontSize: `${fontSize}px`,
+            fontSize: `${actualFontSize}px`,
             color: color
         });
         this.uiContainer.add(uiText);
         return uiText;
     }
+    getResponsiveX(x) {
+        return (x / 800) * this.cameras.main.width; // Scale based on 800px base width
+    }
+    getResponsiveY(y) {
+        return (y / 600) * this.cameras.main.height; // Scale based on 600px base height
+    }
     createHealthBar() {
-        const barWidth = 200;
-        const barHeight = 20;
-        const barX = 10;
-        const barY = constants_1.GAME_HEIGHT - 30;
+        const barWidth = Math.min(200, this.cameras.main.width * 0.25); // Max 25% of screen width
+        const barHeight = Math.max(15, this.cameras.main.height * 0.025); // Min 15px, max 2.5% of screen height
+        const barX = this.getResponsiveX(10);
+        const barY = this.getResponsiveY(570);
         // Background
         this.healthBarBackground = this.add.graphics();
         this.healthBarBackground.fillStyle(0xff0000);
@@ -134,10 +149,10 @@ class GameScene extends phaser_1.default.Scene {
         this.uiContainer.add(this.healthBarFill);
     }
     updateHealthBar() {
-        const barWidth = 200;
-        const barHeight = 20;
-        const barX = 10;
-        const barY = constants_1.GAME_HEIGHT - 30;
+        const barWidth = Math.min(200, this.cameras.main.width * 0.25);
+        const barHeight = Math.max(15, this.cameras.main.height * 0.025);
+        const barX = this.getResponsiveX(10);
+        const barY = this.getResponsiveY(570);
         const targetWidth = barWidth * (this.player.health / this.player.maxHealth);
         if (this.currentHealthBarWidth !== targetWidth) {
             this.tweens.add({
@@ -256,7 +271,7 @@ class GameScene extends phaser_1.default.Scene {
         // Start first wave
         this.spawnManager.startWave();
         // Add wave text for single player
-        this.waveText = this.createUIText(10, 40, `Wave: 1`);
+        this.waveText = this.createUIText(this.getResponsiveX(10), this.getResponsiveY(40), `Wave: 1`);
         // Initialize upgrade UI
         this.updateUpgradeUI();
     }
@@ -346,35 +361,23 @@ class GameScene extends phaser_1.default.Scene {
         this.upgradeTexts.forEach(text => text.destroy());
         this.upgradeTexts = [];
         const upgrades = this.player.getUpgrades();
-        let yOffset = constants_1.GAME_HEIGHT - 100;
+        let yOffset = this.getResponsiveY(500);
         // Damage upgrade
         if (upgrades.damageLevel > 0) {
-            const text = this.add.text(10, yOffset, `Damage: ${upgrades.damageLevel}`, {
-                fontSize: '18px',
-                color: '#ff4444'
-            });
+            const text = this.createUIText(this.getResponsiveX(10), yOffset, `Damage: ${upgrades.damageLevel}`, 18, '#ff4444');
             this.upgradeTexts.push(text);
-            this.uiContainer.add(text);
-            yOffset += 25;
+            yOffset += this.getResponsiveY(25);
         }
         // Speed upgrade
         if (upgrades.speedLevel > 0) {
-            const text = this.add.text(10, yOffset, `Speed: ${upgrades.speedLevel}`, {
-                fontSize: '18px',
-                color: '#44ff44'
-            });
+            const text = this.createUIText(this.getResponsiveX(10), yOffset, `Speed: ${upgrades.speedLevel}`, 18, '#44ff44');
             this.upgradeTexts.push(text);
-            this.uiContainer.add(text);
-            yOffset += 25;
+            yOffset += this.getResponsiveY(25);
         }
         // Health upgrade
         if (upgrades.healthLevel > 0) {
-            const text = this.add.text(10, yOffset, `Health: ${upgrades.healthLevel}`, {
-                fontSize: '18px',
-                color: '#4444ff'
-            });
+            const text = this.createUIText(this.getResponsiveX(10), yOffset, `Health: ${upgrades.healthLevel}`, 18, '#4444ff');
             this.upgradeTexts.push(text);
-            this.uiContainer.add(text);
         }
     }
     startBackgroundMusic() {
@@ -690,7 +693,7 @@ class GameScene extends phaser_1.default.Scene {
         this.playerCountText.setText(`Players: ${gameState.players.length}`);
         // Update wave text
         if (!this.waveText) {
-            this.waveText = this.createUIText(10, 40, `Wave: ${gameState.wave}`);
+            this.waveText = this.createUIText(this.getResponsiveX(10), this.getResponsiveY(40), `Wave: ${gameState.wave}`);
         }
         else {
             this.waveText.setText(`Wave: ${gameState.wave}`);

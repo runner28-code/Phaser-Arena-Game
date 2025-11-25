@@ -13,6 +13,22 @@ class UpgradeScene extends phaser_1.default.Scene {
         this.upgrades = [];
         this.upgradeCards = [];
     }
+    getResponsiveFontSize(baseSize) {
+        const scale = Math.min(this.cameras.main.width / 800, this.cameras.main.height / 600);
+        return `${Math.max(12, Math.round(baseSize * scale))}px`;
+    }
+    getResponsiveX(x) {
+        return (x / 800) * this.cameras.main.width;
+    }
+    getResponsiveY(y) {
+        return (y / 600) * this.cameras.main.height;
+    }
+    getResponsiveWidth(width) {
+        return (width / 800) * this.cameras.main.width;
+    }
+    getResponsiveHeight(height) {
+        return (height / 600) * this.cameras.main.height;
+    }
     init(data) {
         this.upgrades = data.upgrades;
         this.onSelect = data.onSelect;
@@ -21,29 +37,29 @@ class UpgradeScene extends phaser_1.default.Scene {
         // Semi-transparent background
         const background = this.add.graphics();
         background.fillStyle(0x000000, 0.7);
-        background.fillRect(0, 0, constants_1.GAME_WIDTH, constants_1.GAME_HEIGHT);
+        background.fillRect(0, 0, (0, constants_1.getGameWidth)(), (0, constants_1.getGameHeight)());
         background.setInteractive();
         // Title
-        const title = this.add.text(constants_1.GAME_WIDTH / 2, 100, 'LEVEL UP!', {
-            fontSize: '48px',
+        const title = this.add.text(this.getResponsiveX(400), this.getResponsiveY(100), 'LEVEL UP!', {
+            fontSize: this.getResponsiveFontSize(48),
             color: '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         // Create upgrade cards
-        const cardWidth = 200;
-        const cardHeight = 250;
-        const spacing = 50;
-        const startX = (constants_1.GAME_WIDTH - (3 * cardWidth + 2 * spacing)) / 2 + cardWidth / 2;
+        const cardWidth = this.getResponsiveWidth(200);
+        const cardHeight = this.getResponsiveHeight(250);
+        const spacing = this.getResponsiveWidth(50);
+        const startX = ((0, constants_1.getGameWidth)() - (3 * cardWidth + 2 * spacing)) / 2 + cardWidth / 2;
         for (let i = 0; i < this.upgrades.length; i++) {
             const upgrade = this.upgrades[i];
             const x = startX + i * (cardWidth + spacing);
-            const y = constants_1.GAME_HEIGHT / 2;
+            const y = this.getResponsiveY(300);
             const card = this.createUpgradeCard(x, y, cardWidth, cardHeight, upgrade);
             this.upgradeCards.push(card);
         }
         // Instructions
-        const instructions = this.add.text(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT - 100, 'Click to choose your upgrade', {
-            fontSize: '24px',
+        const instructions = this.add.text(this.getResponsiveX(400), this.getResponsiveY(500), 'Click to choose your upgrade', {
+            fontSize: this.getResponsiveFontSize(24),
             color: '#ffffff'
         }).setOrigin(0.5);
     }
@@ -58,20 +74,20 @@ class UpgradeScene extends phaser_1.default.Scene {
         container.add(background);
         // Icon placeholder (text for now)
         const icon = this.add.text(0, -height / 2 + 40, upgrade.icon, {
-            fontSize: '48px',
+            fontSize: this.getResponsiveFontSize(48),
             color: '#ffffff'
         }).setOrigin(0.5);
         container.add(icon);
         // Name
         const nameText = this.add.text(0, -height / 2 + 80, upgrade.name, {
-            fontSize: '20px',
+            fontSize: this.getResponsiveFontSize(20),
             color: '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         container.add(nameText);
         // Description
         const descText = this.add.text(0, 0, upgrade.description, {
-            fontSize: '16px',
+            fontSize: this.getResponsiveFontSize(16),
             color: '#cccccc',
             align: 'center',
             wordWrap: { width: width - 20 }

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../../shared/config/constants';
+import { GAME_WIDTH, GAME_HEIGHT, getGameWidth, getGameHeight } from '../../shared/config/constants';
 
 export class PreloadScene extends Phaser.Scene {
   private progressBar!: Phaser.GameObjects.Graphics;
@@ -9,11 +9,28 @@ export class PreloadScene extends Phaser.Scene {
     super({ key: 'Preload' });
   }
 
+  private getResponsiveFontSize(baseSize: number): string {
+    const scale = Math.min(this.cameras.main.width / 800, this.cameras.main.height / 600);
+    return `${Math.max(16, Math.round(baseSize * scale))}px`;
+  }
+
+  private getResponsiveX(x: number): number {
+    return (x / 800) * this.cameras.main.width;
+  }
+
+  private getResponsiveY(y: number): number {
+    return (y / 600) * this.cameras.main.height;
+  }
+
+  private getResponsiveWidth(width: number): number {
+    return (width / 800) * this.cameras.main.width;
+  }
+
   preload() {
     // Create progress bar
     this.progressBar = this.add.graphics();
-    this.progressText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '0%', {
-      fontSize: '32px',
+    this.progressText = this.add.text(this.getResponsiveX(400), this.getResponsiveY(270), '0%', {
+      fontSize: this.getResponsiveFontSize(32),
       color: '#ffffff'
     }).setOrigin(0.5);
 
@@ -21,7 +38,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.on('progress', (value: number) => {
       this.progressBar.clear();
       this.progressBar.fillStyle(0xffffff, 1);
-      this.progressBar.fillRect(GAME_WIDTH / 4, GAME_HEIGHT / 2 - 10, (GAME_WIDTH / 2) * value, 20);
+      this.progressBar.fillRect(this.getResponsiveX(200), this.getResponsiveY(290), this.getResponsiveWidth(400) * value, this.getResponsiveY(20));
       this.progressText.setText(Math.round(value * 100) + '%');
     });
 
@@ -48,8 +65,11 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('coin', 'src/client/scenes/assets/coin.png');
     this.load.image('speed_boost', 'src/client/scenes/assets/speed_boost.png');
     this.load.image('damage_boost', 'src/client/scenes/assets/damage_boost.png');
-    this.load.image('ui', 'src/client/scenes/assets/ui.png'); // Placeholder
-
+    this.load.image('ui', 'src/client/scenes/assets/ui.png');
+    this.load.image('background_menu', 'background_menu.png');
+    this.load.image('background_game', 'background_game.avif');
+    this.load.image('button', 'button.png');
+    this.load.image('button', 'button.png');
     // Sounds
     this.load.audio('player_attack', 'player_attack.wav');
     this.load.audio('enemy_damage', 'enemy_damage.wav');

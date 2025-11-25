@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import {
-  GAME_WIDTH,
-  GAME_HEIGHT,
+  getGameWidth,
+  getGameHeight,
   PLAYER_HEALTH,
   PLAYER_MAX_HEALTH,
   PLAYER_SPEED,
@@ -251,8 +251,8 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     this.setVelocity(velocityX * this.speed * this.speedMultiplier, velocityY * this.speed * this.speedMultiplier);
 
     // Clamp position to arena bounds
-    this.x = Phaser.Math.Clamp(this.x, 0, GAME_WIDTH);
-    this.y = Phaser.Math.Clamp(this.y, 0, GAME_HEIGHT);
+    this.x = Phaser.Math.Clamp(this.x, 0, getGameWidth());
+    this.y = Phaser.Math.Clamp(this.y, 0, getGameHeight());
 
     // Update buff timers
     if (this.invulnerableTimer > 0) {

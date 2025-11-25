@@ -197,8 +197,8 @@ class Player extends phaser_1.default.Physics.Matter.Sprite {
         }
         this.setVelocity(velocityX * this.speed * this.speedMultiplier, velocityY * this.speed * this.speedMultiplier);
         // Clamp position to arena bounds
-        this.x = phaser_1.default.Math.Clamp(this.x, 0, constants_1.GAME_WIDTH);
-        this.y = phaser_1.default.Math.Clamp(this.y, 0, constants_1.GAME_HEIGHT);
+        this.x = phaser_1.default.Math.Clamp(this.x, 0, (0, constants_1.getGameWidth)());
+        this.y = phaser_1.default.Math.Clamp(this.y, 0, (0, constants_1.getGameHeight)());
         // Update buff timers
         if (this.invulnerableTimer > 0) {
             this.invulnerableTimer -= delta;

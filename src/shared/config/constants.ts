@@ -1,3 +1,7 @@
+export const getGameWidth = () => typeof window !== 'undefined' ? window.innerWidth : 800;
+export const getGameHeight = () => typeof window !== 'undefined' ? window.innerHeight : 600;
+
+// For backward compatibility
 export const GAME_WIDTH = 800;
 export const GAME_HEIGHT = 600;
 export const SERVER_PORT = 8080;

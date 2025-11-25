@@ -5,23 +5,35 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PreloadScene = void 0;
 const phaser_1 = __importDefault(require("phaser"));
-const constants_1 = require("../../shared/config/constants");
 class PreloadScene extends phaser_1.default.Scene {
     constructor() {
         super({ key: 'Preload' });
     }
+    getResponsiveFontSize(baseSize) {
+        const scale = Math.min(this.cameras.main.width / 800, this.cameras.main.height / 600);
+        return `${Math.max(16, Math.round(baseSize * scale))}px`;
+    }
+    getResponsiveX(x) {
+        return (x / 800) * this.cameras.main.width;
+    }
+    getResponsiveY(y) {
+        return (y / 600) * this.cameras.main.height;
+    }
+    getResponsiveWidth(width) {
+        return (width / 800) * this.cameras.main.width;
+    }
     preload() {
         // Create progress bar
         this.progressBar = this.add.graphics();
-        this.progressText = this.add.text(constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2, '0%', {
-            fontSize: '32px',
+        this.progressText = this.add.text(this.getResponsiveX(400), this.getResponsiveY(270), '0%', {
+            fontSize: this.getResponsiveFontSize(32),
             color: '#ffffff'
         }).setOrigin(0.5);
         // Update progress bar
         this.load.on('progress', (value) => {
             this.progressBar.clear();
             this.progressBar.fillStyle(0xffffff, 1);
-            this.progressBar.fillRect(constants_1.GAME_WIDTH / 4, constants_1.GAME_HEIGHT / 2 - 10, (constants_1.GAME_WIDTH / 2) * value, 20);
+            this.progressBar.fillRect(this.getResponsiveX(200), this.getResponsiveY(290), this.getResponsiveWidth(400) * value, this.getResponsiveY(20));
             this.progressText.setText(Math.round(value * 100) + '%');
         });
         // Load placeholder assets
@@ -44,7 +56,11 @@ class PreloadScene extends phaser_1.default.Scene {
         this.load.image('coin', 'src/client/scenes/assets/coin.png');
         this.load.image('speed_boost', 'src/client/scenes/assets/speed_boost.png');
         this.load.image('damage_boost', 'src/client/scenes/assets/damage_boost.png');
-        this.load.image('ui', 'src/client/scenes/assets/ui.png'); // Placeholder
+        this.load.image('ui', 'src/client/scenes/assets/ui.png');
+        this.load.image('background_menu', 'background_menu.png');
+        this.load.image('background_game', 'background_game.avif');
+        this.load.image('button', 'button.png');
+        this.load.image('button', 'button.png');
         // Sounds
         this.load.audio('player_attack', 'player_attack.wav');
         this.load.audio('enemy_damage', 'enemy_damage.wav');

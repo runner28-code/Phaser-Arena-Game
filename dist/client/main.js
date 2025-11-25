@@ -34,7 +34,8 @@ const config = {
     ],
     scale: {
         mode: phaser_1.default.Scale.FIT,
-        autoCenter: phaser_1.default.Scale.CENTER_BOTH
+        autoCenter: phaser_1.default.Scale.CENTER_BOTH,
+        expandParent: true
     }
 };
 const game = new phaser_1.default.Game(config);

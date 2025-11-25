@@ -138,6 +138,14 @@ class GameRoom {
             const dx = otherPlayer.x - player.x;
             const dy = otherPlayer.y - player.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
+            // if (distance < 50) { // attack range
+            //   otherPlayer.health -= player.damage;
+            //   if (otherPlayer.health <= 0) {
+            //     otherPlayer.state = PlayerState.DEAD;
+            //     // Game ends when a player dies
+            //     this.endGame();
+            //   }
+            // }
         }
         // Check for hits on enemies
         for (const [enemyId, enemy] of this.enemies) {
@@ -381,10 +389,13 @@ class GameRoom {
         this.spawnCollectible(x, y, type, value);
     }
     spawnCollectible(x, y, type, value = 1) {
+        // Add random offset to prevent immediate collection
+        const offsetX = (Math.random() - 0.5) * 40; // +/- 20 pixels
+        const offsetY = (Math.random() - 0.5) * 40;
         const collectible = {
             id: `collectible_${this.nextCollectibleId++}`,
-            x,
-            y,
+            x: x + offsetX,
+            y: y + offsetY,
             type,
             value
         };

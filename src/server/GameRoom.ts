@@ -424,10 +424,14 @@ export class GameRoom {
   }
 
   private spawnCollectible(x: number, y: number, type: CollectibleType, value: number = 1) {
+    // Add random offset to prevent immediate collection
+    const offsetX = (Math.random() - 0.5) * 40; // +/- 20 pixels
+    const offsetY = (Math.random() - 0.5) * 40;
+
     const collectible: CollectibleData = {
       id: `collectible_${this.nextCollectibleId++}`,
-      x,
-      y,
+      x: x + offsetX,
+      y: y + offsetY,
       type,
       value
     };
