@@ -89,7 +89,7 @@ export class GameScene extends Phaser.Scene {
 
     if (this.mode === 'multi') {
       // Initialize network manager for multiplayer
-      this.networkManager = new NetworkManager('ws://192.168.110.132:8080');
+      this.networkManager = new NetworkManager('ws://localhost:8080');
       this.networkManager.connect().then(() => {
         this.setupNetworkHandlers();
         this.networkManager!.joinGame();

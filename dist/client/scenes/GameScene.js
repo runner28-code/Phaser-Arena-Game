@@ -65,7 +65,7 @@ class GameScene extends phaser_1.default.Scene {
         this.player = new Player_1.Player(this, constants_1.GAME_WIDTH / 2, constants_1.GAME_HEIGHT / 2, 'player_idle');
         if (this.mode === 'multi') {
             // Initialize network manager for multiplayer
-            this.networkManager = new NetworkManager_1.NetworkManager('ws://192.168.110.132:8080');
+            this.networkManager = new NetworkManager_1.NetworkManager('ws://localhost:8080');
             this.networkManager.connect().then(() => {
                 this.setupNetworkHandlers();
                 this.networkManager.joinGame();

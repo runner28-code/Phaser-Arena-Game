@@ -11,7 +11,7 @@ export const TILE_SIZE = 32;
 export const PLAYER_SPEED = 1;
 export const PLAYER_HEALTH = 100;
 export const PLAYER_MAX_HEALTH = 100;
-export const PLAYER_DAMAGE = 100;
+export const PLAYER_DAMAGE = 50;
 export const ATTACK_COOLDOWN = 50;
 export const ENEMY_SPEED_BASE = 50;
 

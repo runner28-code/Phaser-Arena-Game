@@ -24,7 +24,7 @@ A fast-paced 2D action game built with Phaser.js featuring both single-player an
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/runner28-code/Phaser-Arena-Game.git
    cd phaser-fantasy-game
    ```
 
